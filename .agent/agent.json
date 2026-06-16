@@ -1,0 +1,28 @@
+{
+  "name": "moshomo-agent",
+  "scope": "repo",
+  "repo": "Moshomo/moshomo",
+  "inherits": [
+    "../../agent-kit"
+  ],
+  "commands": [
+    ".agent/commands/explore.md",
+    ".agent/commands/scaffold-plan.md",
+    ".agent/commands/verify.md"
+  ],
+  "rules": [
+    ".agent/rules/repo-safety.md",
+    ".agent/rules/source-of-truth.md",
+    ".agent/rules/verification.md",
+    ".agent/rules/product-boundaries.md",
+    ".agent/rules/monorepo-architecture.md",
+    ".agent/rules/pori-integration.md",
+    ".agent/rules/progress-tracking.md"
+  ],
+  "skills": [
+    ".agent/skills/moshomo-workflow/SKILL.md"
+  ],
+  "approval_required": [
+    "secrets, credentials, deployment, production-impacting changes"
+  ]
+}
