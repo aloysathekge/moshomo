@@ -1,0 +1,21 @@
+{
+  "name": "moshomo",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.4.0",
+  "scripts": {
+    "dev": "turbo dev",
+    "dev:web": "pnpm --filter @moshomo/web dev",
+    "dev:mobile": "pnpm --filter @moshomo/mobile start",
+    "dev:api": "uv run --project apps/api uvicorn moshomo_api.main:app --reload --host 0.0.0.0 --port 8000",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "verify": "pnpm lint && pnpm typecheck"
+  },
+  "devDependencies": {
+    "turbo": "latest",
+    "typescript": "latest"
+  }
+}
