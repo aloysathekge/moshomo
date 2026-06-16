@@ -1,0 +1,495 @@
+# Moshomo V1 PRD
+
+## Product
+
+Moshomo
+
+## Tagline
+
+AI-Native Workforce Operating System
+
+---
+
+# Vision
+
+Moshomo helps businesses manage employees, leave, and shift scheduling through modern workflows powered by AI.
+
+Unlike traditional HR systems that simply store information, Moshomo actively assists managers by automating workforce operations and providing intelligent recommendations through Pori.
+
+The first version focuses on solving workforce management before payroll.
+
+---
+
+# Problem
+
+Businesses spend too much time:
+
+* Managing employee records
+* Tracking leave requests
+* Building schedules
+* Finding replacement staff
+* Answering repetitive employee questions
+
+Most companies still rely on spreadsheets, WhatsApp groups, and disconnected systems.
+
+---
+
+# Solution
+
+Moshomo provides:
+
+1. Employee Management
+2. Leave Management
+3. Smart Shift Scheduling
+4. Workforce AI Assistant (Pori)
+
+Payroll is intentionally excluded from V1.
+
+---
+
+# Users
+
+## Company Admin
+
+Responsible for:
+
+* Company setup
+* Employee management
+* Roles and permissions
+
+## Manager
+
+Responsible for:
+
+* Scheduling
+* Leave approvals
+* Workforce planning
+
+## Employee
+
+Responsible for:
+
+* Viewing shifts
+* Requesting leave
+* Accessing workforce information
+
+---
+
+# Platforms
+
+## Web
+
+Primary platform for:
+
+* Admins
+* Managers
+
+## Mobile
+
+Primary platform for:
+
+* Employees
+
+Built using Expo React Native.
+
+---
+
+# Core Product Architecture
+
+```txt
+Moshomo
+│
+├── Employee Management
+├── Leave Management
+├── Smart Shifts
+└── Pori Intelligence Layer
+```
+
+Single application.
+
+Single database.
+
+Single authentication system.
+
+---
+
+# Module 1: Employee Management
+
+## Objective
+
+Create a central source of truth for employee information.
+
+## Features
+
+### Employee Profile
+
+Fields:
+
+* First Name
+* Last Name
+* Employee Number
+* Email
+* Phone Number
+* Department
+* Role
+* Employment Type
+* Start Date
+* Salary Rate
+* Status
+
+### Employee Status
+
+* Active
+* Suspended
+* Terminated
+* Resigned
+
+### Documents
+
+Upload:
+
+* Contracts
+* IDs
+* Certifications
+
+### Employee List
+
+Managers can:
+
+* Search employees
+* Filter employees
+* View profiles
+* Edit profiles
+
+---
+
+# Module 2: Leave Management
+
+## Objective
+
+Digitize leave requests and approvals.
+
+## Leave Types
+
+* Annual Leave
+* Sick Leave
+* Family Responsibility Leave
+* Unpaid Leave
+
+## Employee Features
+
+### Request Leave
+
+Input:
+
+* Leave Type
+* Start Date
+* End Date
+* Reason
+
+### View Leave Balance
+
+### View Leave History
+
+---
+
+## Manager Features
+
+### Approve Leave
+
+### Reject Leave
+
+### View Team Calendar
+
+### View Pending Requests
+
+---
+
+## AI Features
+
+Employees can submit requests naturally.
+
+Examples:
+
+"I need next Friday off."
+
+"I need annual leave from the 10th to the 14th."
+
+Pori extracts:
+
+* Dates
+* Leave type
+* Duration
+
+---
+
+## Auto Approval Rules
+
+Pori may automatically approve leave if:
+
+* Employee has sufficient balance
+* Team coverage remains healthy
+* Policy requirements are satisfied
+
+Otherwise:
+
+* Escalate to manager
+
+---
+
+# Module 3: Smart Shifts
+
+## Objective
+
+Reduce scheduling effort through automation.
+
+## Core Features
+
+### Shift Templates
+
+Examples:
+
+* Morning
+* Afternoon
+* Night
+
+### Shift Assignment
+
+Managers assign employees.
+
+### Weekly Schedule
+
+Calendar view.
+
+### Monthly Schedule
+
+Calendar view.
+
+### Employee Availability
+
+Employees can indicate availability.
+
+---
+
+# AI Features
+
+## Schedule Generation
+
+Manager Prompt:
+
+"Generate next week's schedule."
+
+Pori considers:
+
+* Existing leave
+* Employee availability
+* Historical assignments
+* Fair distribution
+
+---
+
+## Shift Gap Detection
+
+When shifts become unfilled:
+
+Pori detects:
+
+* Vacant shifts
+* Understaffed periods
+
+---
+
+## Replacement Suggestions
+
+Pori identifies suitable employees based on:
+
+* Availability
+* Skills
+* Overtime exposure
+* Fairness
+
+---
+
+# Module 4: Pori Workforce Assistant
+
+## Objective
+
+Provide a conversational interface across the platform.
+
+---
+
+## Manager Examples
+
+Who is absent today?
+
+Show pending leave requests.
+
+Generate next week's schedule.
+
+Which shifts are understaffed?
+
+Show employees without shifts.
+
+---
+
+## Employee Examples
+
+When is my next shift?
+
+How many leave days do I have?
+
+Show my leave history.
+
+Am I working this weekend?
+
+---
+
+# Navigation Structure
+
+## Web
+
+```txt
+Dashboard
+Employees
+Leave
+Shifts
+AI Assistant
+Settings
+```
+
+---
+
+## Mobile
+
+```txt
+Home
+My Shifts
+Leave
+Assistant
+Profile
+```
+
+---
+
+# Dashboard
+
+## Manager Dashboard
+
+Cards:
+
+* Employees
+* Employees On Leave Today
+* Pending Leave Requests
+* Upcoming Shifts
+* Open Shift Gaps
+
+AI Widget:
+
+Ask Pori
+
+---
+
+## Employee Dashboard
+
+Cards:
+
+* Next Shift
+* Leave Balance
+* Upcoming Leave
+* Notifications
+
+AI Widget:
+
+Ask Pori
+
+---
+
+# Permissions
+
+## Admin
+
+Full Access
+
+## Manager
+
+Employees
+Leave
+Shifts
+
+## Employee
+
+Own Profile
+
+Own Leave
+
+Own Shifts
+
+---
+
+# Technology Stack
+
+## Monorepo
+
+Turborepo
+
+## Frontend
+
+Next.js
+
+Expo React Native
+
+## Backend
+
+FastAPI
+
+## Database
+
+Supabase Postgres
+
+## Authentication
+
+Supabase Auth
+
+## AI Layer
+
+Pori
+
+## Storage
+
+Supabase Storage
+
+---
+
+# Success Criteria
+
+V1 is successful when:
+
+* Companies can onboard employees
+* Employees can request leave
+* Managers can manage schedules
+* Pori can answer workforce questions
+* Pori can generate schedules
+* At least 5 companies actively use the platform
+
+---
+
+# Out of Scope
+
+Not included in V1:
+
+* Payroll
+* Payslips
+* Attendance Tracking
+* Clock In / Clock Out
+* GPS Tracking
+* Recruitment
+* Performance Management
+* Benefits Management
+
+These will be delivered in future releases.
+
+---
+
+# V1 Mission
+
+Launch a production-ready workforce management platform where employee management, leave management, and scheduling are enhanced by AI from day one.
