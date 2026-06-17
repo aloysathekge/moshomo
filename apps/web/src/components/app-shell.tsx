@@ -2,10 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { MouseEvent, useEffect, useState } from "react";
-import { type IconName, navModulesFor, type Role } from "@/lib/apps";
+import { Icon } from "@/components/icon";
+import { type AppModule, navGroupsFor, type Role } from "@/lib/apps";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 
-export function AppShell({ children, companyName, logoUrl, role = "employee" }: { children: React.ReactNode; companyName?: string; logoUrl?: string; role?: Role }) {
+export function AppShell({ children, companyName, logoUrl, role = "employee", userEmail }: { children: React.ReactNode; companyName?: string; logoUrl?: string; role?: Role; userEmail?: string }) {
   const router = useRouter();
   async function signOut() {
     await getSupabaseBrowserClient().auth.signOut();
@@ -38,22 +39,29 @@ export function AppShell({ children, companyName, logoUrl, role = "employee" }: 
       window.dispatchEvent(new HashChangeEvent("hashchange"));
     }
   };
+  const goSection = (section: string) => {
+    if (section && window.location.hash !== `#${section}`) window.location.hash = section;
+  };
 
-  const items = navModulesFor(role).map((module) => ({
-    href: module.section ? `/app#${module.section}` : "/app",
-    icon: module.icon,
-    label: module.roles[role]!.label,
-  }));
+  const groups = navGroupsFor(role);
+  const topGroups = groups.filter((group) => group.id === "main" || group.id === "manage");
+  const accountGroup = groups.find((group) => group.id === "account");
+  const appModules = groups.find((group) => group.id === "apps")?.modules ?? [];
+  const href = (section: string) => (section ? `/app#${section}` : "/app");
+  const coreItems = [...topGroups, ...(accountGroup ? [accountGroup] : [])].flatMap((group) =>
+    group.modules.map((module) => ({ href: href(module.section), label: module.roles[role]!.label })),
+  );
+
   return (
-    <main className="min-h-screen text-ink md:grid md:grid-cols-[276px_1fr]">
+    <main className="min-h-screen text-ink md:grid md:grid-cols-[268px_1fr]">
       <aside
-        className="sticky top-0 hidden h-screen flex-col overflow-y-auto border-r border-white/5 px-5 py-6 text-white md:flex"
+        className="sticky top-0 hidden h-screen flex-col overflow-y-auto border-r border-white/5 px-4 py-6 text-white md:flex"
         style={{
           background:
             "radial-gradient(520px 300px at 50% -10%, rgba(111,224,168,0.16), transparent 60%), linear-gradient(180deg, #103a28 0%, #0c2a1d 100%)",
         }}
       >
-        <a className="flex items-center gap-3 px-1" href="/app" onClick={(event) => navigate(event, "/app")}>
+        <a className="flex items-center gap-3 px-2" href="/app" onClick={(event) => navigate(event, "/app")}>
           <CompanyLogo companyName={companyName} logoUrl={logoUrl} />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{companyName ?? "Moshomo"}</p>
@@ -61,42 +69,68 @@ export function AppShell({ children, companyName, logoUrl, role = "employee" }: 
           </div>
         </a>
 
-        <nav className="mt-9 space-y-1" aria-label="Workspace navigation">
-          {items.map((item) => (
-            <a
-              className={isActive(item.href) ? "nav-link nav-link-active" : "nav-link"}
-              href={item.href}
-              key={item.label}
-              onClick={(event) => navigate(event, item.href)}
-            >
-              <Icon name={item.icon} />
-              {item.label}
-            </a>
+        <nav className="mt-8 space-y-6" aria-label="Workspace navigation">
+          {topGroups.map((group) => (
+            <div className="space-y-1" key={group.id}>
+              {group.label && (
+                <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200/45">
+                  {group.label}
+                </p>
+              )}
+              {group.modules.map((module) => (
+                <a
+                  className={isActive(href(module.section)) ? "nav-link nav-link-active" : "nav-link"}
+                  href={href(module.section)}
+                  key={module.id}
+                  onClick={(event) => navigate(event, href(module.section))}
+                >
+                  <Icon name={module.icon} />
+                  {module.roles[role]!.label}
+                </a>
+              ))}
+            </div>
           ))}
         </nav>
 
-        <div className="mt-auto rounded-2xl border border-white/10 bg-white/[0.06] p-4">
-          <div className="flex items-center gap-2 text-xs font-semibold tracking-wide text-brand-300">
-            <Icon name="sparkles" /> MOSHOMO AI
+        <div className="mt-auto space-y-3 pt-6">
+          {appModules.length > 0 && (
+            <AppsDock activeHash={hash} modules={appModules} onPick={goSection} role={role} />
+          )}
+          <div className="space-y-1 border-t border-white/10 pt-3">
+            {accountGroup?.modules.map((module) => (
+              <a
+                className={isActive(href(module.section)) ? "nav-link nav-link-active" : "nav-link"}
+                href={href(module.section)}
+                key={module.id}
+                onClick={(event) => navigate(event, href(module.section))}
+              >
+                <Icon name={module.icon} />
+                {module.roles[role]!.label}
+              </a>
+            ))}
+            <div className="mt-1 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.06] p-2.5">
+              <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-100 text-sm font-bold text-brand-800">
+                {role.slice(0, 1).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-white">{userEmail ?? companyName ?? "Account"}</p>
+                <p className="text-xs capitalize text-brand-300/70">{role}</p>
+              </div>
+              <button
+                aria-label="Sign out"
+                className="grid size-8 shrink-0 place-items-center rounded-lg text-white/55 transition hover:bg-white/10 hover:text-white"
+                onClick={signOut}
+                title="Sign out"
+              >
+                <svg aria-hidden="true" className="size-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" viewBox="0 0 24 24">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <path d="m16 17 5-5-5-5" />
+                  <path d="M21 12H9" />
+                </svg>
+              </button>
+            </div>
           </div>
-          <p className="mt-2 text-sm leading-5 text-white/75">
-            Your workforce copilot is ready when you are.
-          </p>
-          <a
-            className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-white transition hover:text-brand-300"
-            href="/app#assistant"
-            onClick={(event) => navigate(event, "/app#assistant")}
-          >
-            Ask a question <span aria-hidden>→</span>
-          </a>
         </div>
-        <button
-          className="mt-3 flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white/60 transition hover:bg-white/[0.08] hover:text-white"
-          onClick={signOut}
-        >
-          <Icon name="profile" />
-          Sign out
-        </button>
       </aside>
 
       <section className="min-w-0">
@@ -114,10 +148,7 @@ export function AppShell({ children, companyName, logoUrl, role = "employee" }: 
             </p>
             <div className="flex items-center gap-3">
               <span className="badge hidden sm:inline-flex">{role}</span>
-              <button
-                className="secondary-button px-3 py-2 text-sm md:hidden"
-                onClick={signOut}
-              >
+              <button className="secondary-button px-3 py-2 text-sm md:hidden" onClick={signOut}>
                 Sign out
               </button>
               <div className="grid size-9 place-items-center rounded-full bg-brand-100 text-sm font-bold text-brand-800 ring-1 ring-brand-300/40">
@@ -125,11 +156,8 @@ export function AppShell({ children, companyName, logoUrl, role = "employee" }: 
               </div>
             </div>
           </div>
-          <nav
-            className="mt-4 flex gap-2 overflow-x-auto pb-1 md:hidden"
-            aria-label="Mobile workspace navigation"
-          >
-            {items.map((item) => (
+          <nav className="mt-4 flex gap-2 overflow-x-auto pb-1 md:hidden" aria-label="Mobile workspace navigation">
+            {coreItems.map((item) => (
               <a
                 className={`whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-semibold transition ${
                   isActive(item.href)
@@ -151,21 +179,33 @@ export function AppShell({ children, companyName, logoUrl, role = "employee" }: 
   );
 }
 
+function AppsDock({ activeHash, modules, onPick, role }: { activeHash: string; modules: AppModule[]; onPick: (section: string) => void; role: Role }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-3">
+      <p className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200/45">Apps</p>
+      <div className="grid grid-cols-4 gap-1.5">
+        {modules.map((module) => {
+          const active = activeHash === `#${module.section}`;
+          return (
+            <button
+              aria-label={module.roles[role]!.label}
+              className={`grid aspect-square place-items-center rounded-xl transition ${
+                active ? "bg-white text-brand-800" : "text-emerald-100/70 hover:bg-white/10 hover:text-white"
+              }`}
+              key={module.id}
+              onClick={() => onPick(module.section)}
+              title={module.roles[role]!.label}
+            >
+              <Icon name={module.icon} />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function CompanyLogo({ companyName, logoUrl }: { companyName?: string; logoUrl?: string }) {
   if (logoUrl) return <div aria-label={`${companyName ?? "Company"} logo`} className="size-10 shrink-0 rounded-xl bg-white bg-contain bg-center bg-no-repeat shadow-sm ring-1 ring-black/5" role="img" style={{ backgroundImage: `url("${logoUrl}")` }} />;
   return <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-100 text-sm font-black text-brand-800 ring-1 ring-brand-300/40">{(companyName ?? "M").slice(0, 2).toUpperCase()}</div>;
-}
-
-function Icon({ name }: { name: IconName }) {
-  const paths: Record<IconName, React.ReactNode> = {
-    home: <><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5M9 21v-7h6v7"/></>,
-    people: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></>,
-    building: <><path d="M3 21h18M6 21V4h9v17M15 9h3v12M9 8h2M9 12h2M9 16h2"/></>,
-    leave: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18M8 15h.01M12 15h.01M16 15h.01"/></>,
-    shifts: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
-    sparkles: <><path d="m12 3-1.5 4.5L6 9l4.5 1.5L12 15l1.5-4.5L18 9l-4.5-1.5L12 3Z"/><path d="m5 15-.7 2.3L2 18l2.3.7L5 21l.7-2.3L8 18l-2.3-.7L5 15ZM19 14l-.7 2.3-2.3.7 2.3.7L19 20l.7-2.3L22 17l-2.3-.7L19 14Z"/></>,
-    settings: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.1A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.1A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.1A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.2.36.6.8 1.1 1 .35.15.75.2 1.1.2h.1v4h-.1a1.7 1.7 0 0 0-1.1.4c-.5.2-.9.6-1.1 1Z"/></>,
-    profile: <><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></>,
-  };
-  return <svg aria-hidden="true" className="size-5 shrink-0" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" viewBox="0 0 24 24">{paths[name]}</svg>;
 }

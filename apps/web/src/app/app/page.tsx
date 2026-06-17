@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { EmployeesPanel, type Account, type Employee, type Role } from "@/components/employees-panel";
-import { moduleForSection } from "@/lib/apps";
+import { Icon } from "@/components/icon";
+import { appModulesFor, moduleForSection } from "@/lib/apps";
 import { moshomoApi } from "@/lib/api";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 
@@ -162,7 +163,7 @@ export default function WorkspacePage() {
     hasTeam: employees.length > 1,
   };
   const setupComplete = setup.hasLogo && setup.hasDepartment && setup.hasTeam;
-  const shellProps = { companyName: company?.name, logoUrl, role: membership.role };
+  const shellProps = { companyName: company?.name, logoUrl, role: membership.role, userEmail: session.user.email };
 
   function homeFor(role: Role) {
     if (role === "employee") return <EmployeeDashboard companyName={company?.name} />;
@@ -244,16 +245,17 @@ function AdminHome({ company, complete, departments, employeeCount, employees, p
           </div>
         </section>
       </div>
+      <AppsGrid role="admin" />
     </div>
   );
 }
 
 function ManagerDashboard({ companyName, employeeCount }: { companyName?: string; employeeCount: number }) {
-  return <div className="mx-auto max-w-6xl animate-rise"><DashboardHeading eyebrow="Manager dashboard" title="Your team, at a glance" subtitle={`Plan today with a clear view of ${companyName ?? "your company"}.`} /><div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4"><MetricCard accent="emerald" label="Team members" value={String(employeeCount)} detail="In your workforce" /><MetricCard accent="amber" label="On leave" value="0" detail="Today" /><MetricCard accent="violet" label="Pending approvals" value="0" detail="No action needed" /><MetricCard accent="blue" label="Shift gaps" value="0" detail="Coverage looks good" /></div><div className="mt-6 grid gap-6 lg:grid-cols-2"><section className="premium-card"><SectionTitle title="Today’s team" action="View team" onAction={() => go("employees")} /><EmptyState title="Your team activity will appear here" detail="Employee status, leave, and shift coverage will populate as modules come online." /></section><section className="premium-card"><SectionTitle title="Requests awaiting review" action="View leave" onAction={() => go("leave")} /><EmptyState title="You are all caught up" detail="New employee leave requests will appear here for review." /></section></div></div>;
+  return <div className="mx-auto max-w-6xl animate-rise"><DashboardHeading eyebrow="Manager dashboard" title="Your team, at a glance" subtitle={`Plan today with a clear view of ${companyName ?? "your company"}.`} /><div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4"><MetricCard accent="emerald" label="Team members" value={String(employeeCount)} detail="In your workforce" /><MetricCard accent="amber" label="On leave" value="0" detail="Today" /><MetricCard accent="violet" label="Pending approvals" value="0" detail="No action needed" /><MetricCard accent="blue" label="Shift gaps" value="0" detail="Coverage looks good" /></div><div className="mt-6 grid gap-6 lg:grid-cols-2"><section className="premium-card"><SectionTitle title="Today’s team" action="View team" onAction={() => go("employees")} /><EmptyState title="Your team activity will appear here" detail="Employee status, leave, and shift coverage will populate as modules come online." /></section><section className="premium-card"><SectionTitle title="Requests awaiting review" action="View leave" onAction={() => go("leave")} /><EmptyState title="You are all caught up" detail="New employee leave requests will appear here for review." /></section></div><AppsGrid role="manager" /></div>;
 }
 
 function EmployeeDashboard({ companyName }: { companyName?: string }) {
-  return <div className="mx-auto max-w-6xl animate-rise"><DashboardHeading eyebrow="My workspace" title="Good day" subtitle={`Everything you need at ${companyName ?? "work"}, in one place.`} /><section className="hero-panel"><div><span className="hero-pill">Your next shift</span><h2 className="mt-5 text-3xl font-semibold text-white">No upcoming shift yet</h2><p className="mt-3 text-sm text-emerald-100/75">Your schedule will appear here as soon as your manager publishes it.</p></div><button className="mt-7 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-[#174d35]" onClick={() => go("shifts")}>View my schedule</button></section><div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-4"><MetricCard accent="emerald" label="Leave balance" value="—" detail="Available days" /><MetricCard accent="blue" label="Upcoming shifts" value="0" detail="Next 7 days" /><MetricCard accent="amber" label="Leave requests" value="0" detail="Pending" /><MetricCard accent="violet" label="Notifications" value="0" detail="You are up to date" /></div><div className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.8fr]"><section className="premium-card"><SectionTitle title="My week" action="Open schedule" onAction={() => go("shifts")} /><EmptyState title="Your schedule is clear" detail="Published shifts and approved leave will appear on your weekly timeline." /></section><section className="relative overflow-hidden rounded-3xl border border-brand-100 bg-brand-50 p-6"><span aria-hidden className="pointer-events-none absolute -right-8 -top-8 size-32 rounded-full bg-brand-300/25 blur-2xl" /><p className="eyebrow">Moshomo AI</p><h2 className="mt-3 text-2xl font-semibold text-brand-800">Ask about your workday</h2><p className="mt-2 text-sm leading-6 text-brand-700/80">Try “When is my next shift?” or “How many leave days do I have?”</p><button className="dark-button mt-6 px-5 py-3 text-sm" onClick={() => go("assistant")}>Ask Moshomo</button></section></div></div>;
+  return <div className="mx-auto max-w-6xl animate-rise"><DashboardHeading eyebrow="My workspace" title="Good day" subtitle={`Everything you need at ${companyName ?? "work"}, in one place.`} /><section className="hero-panel"><div><span className="hero-pill">Your next shift</span><h2 className="mt-5 text-3xl font-semibold text-white">No upcoming shift yet</h2><p className="mt-3 text-sm text-emerald-100/75">Your schedule will appear here as soon as your manager publishes it.</p></div><button className="mt-7 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-[#174d35]" onClick={() => go("shifts")}>View my schedule</button></section><div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-4"><MetricCard accent="emerald" label="Leave balance" value="—" detail="Available days" /><MetricCard accent="blue" label="Upcoming shifts" value="0" detail="Next 7 days" /><MetricCard accent="amber" label="Leave requests" value="0" detail="Pending" /><MetricCard accent="violet" label="Notifications" value="0" detail="You are up to date" /></div><div className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.8fr]"><section className="premium-card"><SectionTitle title="My week" action="Open schedule" onAction={() => go("shifts")} /><EmptyState title="Your schedule is clear" detail="Published shifts and approved leave will appear on your weekly timeline." /></section><section className="relative overflow-hidden rounded-3xl border border-brand-100 bg-brand-50 p-6"><span aria-hidden className="pointer-events-none absolute -right-8 -top-8 size-32 rounded-full bg-brand-300/25 blur-2xl" /><p className="eyebrow">Moshomo AI</p><h2 className="mt-3 text-2xl font-semibold text-brand-800">Ask about your workday</h2><p className="mt-2 text-sm leading-6 text-brand-700/80">Try “When is my next shift?” or “How many leave days do I have?”</p><button className="dark-button mt-6 px-5 py-3 text-sm" onClick={() => go("assistant")}>Ask Moshomo</button></section></div><AppsGrid role="employee" /></div>;
 }
 
 function DepartmentsView({ departments, employees, onCreate }: { departments: Department[]; employees: Employee[]; onCreate: (event: FormEvent<HTMLFormElement>) => void }) {
@@ -355,6 +357,36 @@ function ComingSoon({ title }: { title: string }) {
 
 function LogoPanel({ company, logoUrl, uploading, onLogo }: { company?: Company; logoUrl?: string; uploading: boolean; onLogo: (file: File) => Promise<void> }) {
   return <section className="premium-card"><h2 className="text-lg font-semibold">Company logo</h2><p className="mt-1 text-sm leading-6 text-ink-muted">Used in the sidebar and branded employee experience. PNG, JPEG, or WebP up to 5 MB.</p><div className="mt-5 flex items-center gap-4"><div className="grid size-20 shrink-0 place-items-center rounded-2xl border border-[var(--line)] bg-surface-muted bg-contain bg-center bg-no-repeat text-xl font-black text-brand-800 ring-1 ring-brand-300/30" style={logoUrl ? { backgroundImage: `url("${logoUrl}")` } : undefined}>{logoUrl ? null : (company?.name ?? "M").slice(0, 2).toUpperCase()}</div><label className="secondary-button cursor-pointer">{uploading ? "Uploading..." : logoUrl ? "Replace logo" : "Upload logo"}<input accept="image/png,image/jpeg,image/webp" className="sr-only" disabled={uploading} onChange={(event) => { const file = event.target.files?.[0]; if (file) void onLogo(file); event.currentTarget.value = ""; }} type="file" /></label></div></section>;
+}
+
+function AppsGrid({ role }: { role: Role }) {
+  const apps = appModulesFor(role);
+  if (apps.length === 0) return null;
+  return (
+    <section className="premium-card mt-6">
+      <div className="flex items-baseline justify-between gap-4">
+        <h2 className="text-lg font-semibold">Apps</h2>
+        <span className="text-xs text-ink-muted">Your workforce toolkit</span>
+      </div>
+      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        {apps.map((app) => (
+          <button
+            className="flex flex-col items-start gap-3 rounded-2xl border border-[var(--line)] bg-surface-muted p-4 text-left transition hover:-translate-y-0.5 hover:border-brand-300 hover:bg-brand-50"
+            key={app.id}
+            onClick={() => go(app.section)}
+          >
+            <span className="grid size-11 place-items-center rounded-xl bg-brand-100 text-brand-700">
+              <Icon name={app.icon} className="size-5" />
+            </span>
+            <span className="text-sm font-semibold">{app.roles[role]!.label}</span>
+            <span className="text-[11px] font-medium uppercase tracking-wide text-ink-faint">
+              {app.status === "coming-soon" ? "Coming soon" : "Open"}
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
 }
 
 function QuickAction({ label, onClick }: { label: string; onClick: () => void }) {
