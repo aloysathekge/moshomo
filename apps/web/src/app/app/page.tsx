@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { EmployeesPanel, type Account, type Employee, type Role } from "@/components/employees-panel";
+import { moduleForSection } from "@/lib/apps";
 import { moshomoApi } from "@/lib/api";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 
@@ -163,38 +164,24 @@ export default function WorkspacePage() {
   const setupComplete = setup.hasLogo && setup.hasDepartment && setup.hasTeam;
   const shellProps = { companyName: company?.name, logoUrl, role: membership.role };
 
+  function homeFor(role: Role) {
+    if (role === "employee") return <EmployeeDashboard companyName={company?.name} />;
+    if (role === "manager") return <ManagerDashboard companyName={company?.name} employeeCount={employees.length} />;
+    return <AdminHome company={company} complete={setupComplete} departments={departments.length} employeeCount={employees.length} employees={employees} pendingInvites={pendingInvites} setup={setup} />;
+  }
+
   function content() {
-    if (membership!.role === "employee") {
-      if (section === "home") return <EmployeeDashboard companyName={company?.name} />;
-      return <ComingSoon title={titleFor(section)} />;
-    }
-
-    if (membership!.role === "manager") {
-      if (section === "home") return <ManagerDashboard companyName={company?.name} employeeCount={employees.length} />;
-      if (section === "team" || section === "employees")
-        return <EmployeesPanel accounts={accounts} canManage={false} companyId={membership!.company_id} departments={departments} employees={employees} onChanged={loadWorkspace} onNotice={setNotice} session={session!} />;
-      return <ComingSoon title={titleFor(section)} />;
-    }
-
-    // Admin
-    if (section === "employees")
-      return <EmployeesPanel accounts={accounts} canManage companyId={membership!.company_id} departments={departments} employees={employees} onChanged={loadWorkspace} onNotice={setNotice} session={session!} />;
-    if (section === "departments")
+    const role = membership!.role;
+    const activeModule = moduleForSection(section, role);
+    if (!activeModule || activeModule.id === "dashboard") return homeFor(role);
+    if (activeModule.status === "coming-soon") return <ComingSoon title={activeModule.roles[role]!.label} />;
+    if (activeModule.id === "employees")
+      return <EmployeesPanel accounts={accounts} canManage={role === "admin"} companyId={membership!.company_id} departments={departments} employees={employees} onChanged={loadWorkspace} onNotice={setNotice} session={session!} />;
+    if (activeModule.id === "departments")
       return <DepartmentsView departments={departments} employees={employees} onCreate={createDepartment} />;
-    if (section === "settings")
+    if (activeModule.id === "settings")
       return <SettingsView company={company} complete={setupComplete} logoUrl={logoUrl} onLogo={uploadLogo} setup={setup} uploadingLogo={uploadingLogo} />;
-    if (["leave", "shifts", "assistant"].includes(section)) return <ComingSoon title={titleFor(section)} />;
-    return (
-      <AdminHome
-        company={company}
-        complete={setupComplete}
-        departments={departments.length}
-        employeeCount={employees.length}
-        employees={employees}
-        pendingInvites={pendingInvites}
-        setup={setup}
-      />
-    );
+    return homeFor(role);
   }
 
   return (
@@ -262,7 +249,7 @@ function AdminHome({ company, complete, departments, employeeCount, employees, p
 }
 
 function ManagerDashboard({ companyName, employeeCount }: { companyName?: string; employeeCount: number }) {
-  return <div className="mx-auto max-w-6xl animate-rise"><DashboardHeading eyebrow="Manager dashboard" title="Your team, at a glance" subtitle={`Plan today with a clear view of ${companyName ?? "your company"}.`} /><div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4"><MetricCard accent="emerald" label="Team members" value={String(employeeCount)} detail="In your workforce" /><MetricCard accent="amber" label="On leave" value="0" detail="Today" /><MetricCard accent="violet" label="Pending approvals" value="0" detail="No action needed" /><MetricCard accent="blue" label="Shift gaps" value="0" detail="Coverage looks good" /></div><div className="mt-6 grid gap-6 lg:grid-cols-2"><section className="premium-card"><SectionTitle title="Today’s team" action="View team" onAction={() => go("team")} /><EmptyState title="Your team activity will appear here" detail="Employee status, leave, and shift coverage will populate as modules come online." /></section><section className="premium-card"><SectionTitle title="Requests awaiting review" action="View leave" onAction={() => go("leave")} /><EmptyState title="You are all caught up" detail="New employee leave requests will appear here for review." /></section></div></div>;
+  return <div className="mx-auto max-w-6xl animate-rise"><DashboardHeading eyebrow="Manager dashboard" title="Your team, at a glance" subtitle={`Plan today with a clear view of ${companyName ?? "your company"}.`} /><div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4"><MetricCard accent="emerald" label="Team members" value={String(employeeCount)} detail="In your workforce" /><MetricCard accent="amber" label="On leave" value="0" detail="Today" /><MetricCard accent="violet" label="Pending approvals" value="0" detail="No action needed" /><MetricCard accent="blue" label="Shift gaps" value="0" detail="Coverage looks good" /></div><div className="mt-6 grid gap-6 lg:grid-cols-2"><section className="premium-card"><SectionTitle title="Today’s team" action="View team" onAction={() => go("employees")} /><EmptyState title="Your team activity will appear here" detail="Employee status, leave, and shift coverage will populate as modules come online." /></section><section className="premium-card"><SectionTitle title="Requests awaiting review" action="View leave" onAction={() => go("leave")} /><EmptyState title="You are all caught up" detail="New employee leave requests will appear here for review." /></section></div></div>;
 }
 
 function EmployeeDashboard({ companyName }: { companyName?: string }) {
@@ -384,7 +371,6 @@ function Notice({ text, onDismiss }: { text: string; onDismiss: () => void }) { 
 type SetupState = { hasLogo: boolean; hasDepartment: boolean; hasTeam: boolean };
 
 function go(hash: string) { window.location.hash = hash; }
-function titleFor(section: string) { return section.charAt(0).toUpperCase() + section.slice(1); }
 function publicLogoUrl(path: string) { return getSupabaseBrowserClient().storage.from("company-assets").getPublicUrl(path).data.publicUrl; }
 function Field({ label, name, type = "text", required = true, pattern }: { label: string; name: string; type?: string; required?: boolean; pattern?: string }) { return <label className="text-sm font-medium text-ink-soft">{label}{!required && <span className="ml-1 font-normal text-ink-faint">Optional</span>}<input className="input mt-2" name={name} pattern={pattern} required={required} type={type} /></label>; }
 

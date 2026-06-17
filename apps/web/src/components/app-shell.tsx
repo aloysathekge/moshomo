@@ -2,38 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { MouseEvent, useEffect, useState } from "react";
+import { type IconName, navModulesFor, type Role } from "@/lib/apps";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
-
-type Role = "admin" | "manager" | "employee";
-type NavItem = { href: string; icon: IconName; label: string };
-type IconName = "home" | "people" | "building" | "leave" | "shifts" | "sparkles" | "settings" | "profile";
-
-const navigation: Record<Role, NavItem[]> = {
-  admin: [
-    { href: "/app", icon: "home", label: "Dashboard" },
-    { href: "/app#employees", icon: "people", label: "Employees" },
-    { href: "/app#departments", icon: "building", label: "Departments" },
-    { href: "/app#leave", icon: "leave", label: "Leave" },
-    { href: "/app#shifts", icon: "shifts", label: "Shifts" },
-    { href: "/app#assistant", icon: "sparkles", label: "AI Assistant" },
-    { href: "/app#settings", icon: "settings", label: "Settings" },
-  ],
-  manager: [
-    { href: "/app", icon: "home", label: "Dashboard" },
-    { href: "/app#team", icon: "people", label: "Team" },
-    { href: "/app#leave", icon: "leave", label: "Leave" },
-    { href: "/app#shifts", icon: "shifts", label: "Shifts" },
-    { href: "/app#assistant", icon: "sparkles", label: "AI Assistant" },
-    { href: "/app#profile", icon: "profile", label: "Profile" },
-  ],
-  employee: [
-    { href: "/app", icon: "home", label: "Home" },
-    { href: "/app#shifts", icon: "shifts", label: "My Shifts" },
-    { href: "/app#leave", icon: "leave", label: "Leave" },
-    { href: "/app#assistant", icon: "sparkles", label: "Assistant" },
-    { href: "/app#profile", icon: "profile", label: "Profile" },
-  ],
-};
 
 export function AppShell({ children, companyName, logoUrl, role = "employee" }: { children: React.ReactNode; companyName?: string; logoUrl?: string; role?: Role }) {
   const router = useRouter();
@@ -69,7 +39,11 @@ export function AppShell({ children, companyName, logoUrl, role = "employee" }: 
     }
   };
 
-  const items = navigation[role];
+  const items = navModulesFor(role).map((module) => ({
+    href: module.section ? `/app#${module.section}` : "/app",
+    icon: module.icon,
+    label: module.roles[role]!.label,
+  }));
   return (
     <main className="min-h-screen text-ink md:grid md:grid-cols-[276px_1fr]">
       <aside
