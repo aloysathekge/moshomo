@@ -4,6 +4,28 @@
 
 This document defines the first Moshomo data/auth foundation. It should be implemented before broad employee, leave, shift, or Moshomo AI work.
 
+## Implementation Status
+
+The initial foundation is implemented in:
+
+- `supabase/migrations/20260617000100_foundation.sql`
+
+The migration was applied to the linked `moshomoai` Supabase project on 2026-06-17. Local and remote migration history match, and linked database lint reports no schema errors.
+
+Implemented decisions:
+
+- A company is the tenant and workspace boundary.
+- Manager employee visibility starts with the manager's own employee record and direct reports through `manager_employee_id`.
+- Company creation and the first admin membership are trusted backend operations; clients cannot bootstrap their own admin membership through RLS.
+- `salary_rate` is deferred because it requires an explicit sensitive-field access design beyond row visibility.
+- Future remote migration application remains a separate, explicit operation.
+
+Pending onboarding migration:
+
+- `supabase/migrations/20260617000200_company_onboarding.sql`
+- Creates company invitations and transactional company/invitation RPCs.
+- Has passed PostgreSQL parsing and a linked Supabase dry-run but is not applied remotely yet.
+
 Moshomo V1 uses one Supabase project for:
 
 - Postgres data.
@@ -194,6 +216,37 @@ Columns:
 - `created_at timestamptz not null default now()`
 - `completed_at timestamptz`
 
+### company_invitations
+
+Connects a pending Supabase Auth invitation to an employee identity and company-local role.
+
+Lifecycle:
+
+```txt
+pending -> sent -> accepted
+        \-> failed -> sent
+        \-> revoked | expired
+```
+
+The invitation stores no authentication token. Supabase Auth owns email delivery and login verification.
+
+## Onboarding Flow
+
+```txt
+authenticated founder
+-> bootstrap_company RPC
+-> company + founder employee + admin membership
+-> admin creates department
+-> create_employee_invitation RPC
+-> employee record + pending role invitation
+-> backend sends Supabase Auth invite
+-> invited user authenticates
+-> accept_company_invitation RPC
+-> login profile + employee identity + company membership linked atomically
+```
+
+Admin and manager roles add capabilities to the base employee identity. They do not replace it.
+
 ## RLS Direction
 
 Enable RLS on all company-scoped tables.
@@ -241,6 +294,15 @@ Initial areas:
 
 Do not put service-role keys in web or mobile apps.
 
+Implemented API boundary:
+
+- Supabase ES256 access tokens are verified from the project's public JWKS.
+- `X-Company-ID` selects the active company for each workforce request.
+- Active membership is resolved using the caller's token through Supabase RLS.
+- The immutable actor context contains company, user, company-local role, optional employee, and the non-logged access token.
+- Read-only employee list and profile endpoints use explicit company filters and RLS-scoped REST requests.
+- This read-only path uses the Supabase publishable key; it does not use a service-role key.
+
 ## First Migration Order
 
 1. `profiles`
@@ -258,6 +320,9 @@ Do not put service-role keys in web or mobile apps.
 ## Open Decisions
 
 - Whether manager scope is based on department, direct reports, explicit teams, or a mix.
-- Whether `salary_rate` should ship in the first implementation or be postponed because it is sensitive.
 - Whether employee documents are implemented in the first vertical slice or after employee CRUD.
 - Whether Moshomo AI memory uses Postgres text search first or vector search from day one.
+
+Current manager scope uses direct reports as the safe first implementation. Department or explicit-team management can extend it after that access model is specified.
+
+`salary_rate` is postponed until field-level authorization and audit requirements are designed.
