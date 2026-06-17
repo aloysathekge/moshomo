@@ -9,8 +9,8 @@ Payroll, payslips, attendance tracking, clock-in/out, GPS tracking, recruitment,
 ## Current Repo State
 
 ```txt
-apps/web          Next.js admin and manager app
-apps/mobile       Expo employee app
+apps/web          Next.js role-aware workforce app
+apps/mobile       Expo role-aware workforce app
 apps/api          FastAPI backend and native Moshomo AI layer
 packages/shared   Shared workforce constants and types
 docs/architecture Architecture notes

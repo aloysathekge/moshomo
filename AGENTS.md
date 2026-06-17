@@ -10,8 +10,8 @@ AI-native workforce operating system for employee management, leave management, 
 
 ## Project Shape
 
-- `apps/web`: Next.js admin and manager app.
-- `apps/mobile`: Expo employee app.
+- `apps/web`: Next.js role-aware workforce app for admins, managers, and employees.
+- `apps/mobile`: Expo role-aware workforce app for admins, managers, and employees.
 - `apps/api`: FastAPI backend and native Moshomo AI layer.
 - `packages/shared`: shared workforce domain constants and types.
 - `docs/architecture`: architecture notes.

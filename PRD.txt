@@ -79,18 +79,34 @@ Responsible for:
 
 ## Web
 
-Primary platform for:
+Available to:
 
 * Admins
 * Managers
+* Employees
+
+The web experience exposes the workflows permitted by the user's company role.
 
 ## Mobile
 
-Primary platform for:
+Available to:
 
+* Admins
+* Managers
 * Employees
 
 Built using Expo React Native.
+
+The mobile experience exposes the same role-permitted capabilities as web, adapted for mobile interaction.
+
+## Platform Access Rule
+
+Permissions are determined by company membership and role, not by platform.
+
+* Admins can perform their permitted administrative work on web and mobile.
+* Managers can perform their permitted management work on web and mobile.
+* Employees can perform their permitted self-service work on web and mobile.
+* Navigation and presentation may differ by device, but authorization and available business capabilities must remain consistent.
 
 ---
 
@@ -346,20 +362,32 @@ Am I working this weekend?
 
 # Navigation Structure
 
-## Web
+Navigation is role-aware on both web and mobile.
+
+## Admin
 
 ```txt
 Dashboard
 Employees
+Departments
 Leave
 Shifts
 AI Assistant
 Settings
 ```
 
----
+## Manager
 
-## Mobile
+```txt
+Dashboard
+Team
+Leave
+Shifts
+AI Assistant
+Profile
+```
+
+## Employee
 
 ```txt
 Home
@@ -368,6 +396,8 @@ Leave
 Assistant
 Profile
 ```
+
+Web and mobile may present these destinations differently while preserving role capabilities.
 
 ---
 
