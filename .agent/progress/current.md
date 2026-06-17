@@ -2,7 +2,7 @@
 
 ## Active Task
 
-Moshomo initial monorepo scaffold is complete and verified.
+Moshomo foundation design docs are being added before implementation starts.
 
 ## Decisions Made
 
@@ -20,6 +20,8 @@ Moshomo initial monorepo scaffold is complete and verified.
 - Next.js web app, Expo mobile app, FastAPI API, and shared TypeScript package are wired.
 - Next build avoids Google font fetches so local builds are not blocked by font network calls.
 - Added `IMPLEMENTATION_PLAN.md` as the build roadmap.
+- Added `docs/architecture/supabase-foundation.md` for company/auth/schema/RLS direction.
+- Added `docs/architecture/moshomo-ai-design.md` for native Moshomo AI first slice.
 
 ## Important Discoveries
 
@@ -38,4 +40,4 @@ Moshomo initial monorepo scaffold is complete and verified.
 
 ## Next Session Should Start With
 
-Start with `IMPLEMENTATION_PLAN.md` and `docs/architecture/pori-to-moshomo-ai-evaluation.md`, then plan the first vertical slice: Supabase auth boundaries, employee profile model, company memory, and Moshomo AI read-only workforce tools.
+Start with `IMPLEMENTATION_PLAN.md`, `docs/architecture/supabase-foundation.md`, and `docs/architecture/moshomo-ai-design.md`, then implement the first vertical slice: Supabase auth boundaries, employee profile model, company memory, and Moshomo AI read-only workforce tools.

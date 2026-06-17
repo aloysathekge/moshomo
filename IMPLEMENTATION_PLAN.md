@@ -21,6 +21,8 @@ Current source of truth:
 
 - `PRD.txt` for product scope.
 - `docs/architecture/monorepo.md` for repo layout.
+- `docs/architecture/supabase-foundation.md` for company/auth/schema/RLS foundation.
+- `docs/architecture/moshomo-ai-design.md` for the native Moshomo AI first slice.
 - `docs/architecture/pori-workforce-adaptation.md` for the Pori-to-Moshomo AI direction.
 - `docs/architecture/pori-to-moshomo-ai-evaluation.md` for what to keep, strip, and rebuild from Pori.
 
@@ -44,12 +46,14 @@ Deliverables:
 - Supabase Auth assumptions documented.
 - Row-level security plan for admin, manager, and employee access.
 - API settings and Supabase client boundary.
+- Native Moshomo AI context, memory, and first read-only tool design.
 - First API tests.
 
 Primary files/areas:
 
 - `supabase/`
 - `apps/api/src/moshomo_api/`
+- `apps/api/src/moshomo_ai/`
 - `packages/shared/src/`
 - `docs/architecture/`
 
@@ -169,7 +173,7 @@ Start here:
 3. Add FastAPI health plus authenticated employee/profile endpoints.
 4. Add web employee list shell.
 5. Add mobile profile shell.
-6. Add a read-only Moshomo AI tool contract for employee/profile questions.
+6. Add native Moshomo AI actor context, read-only tools, company knowledge design, and assistant run audit trail.
 
 The goal is not feature breadth. The goal is proving the full Moshomo loop:
 

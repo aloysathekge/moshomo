@@ -12,10 +12,15 @@ AI-native workforce operating system for employee management, leave management, 
 
 - `apps/web`: Next.js admin and manager app.
 - `apps/mobile`: Expo employee app.
-- `apps/api`: FastAPI backend and Pori workforce adapter.
+- `apps/api`: FastAPI backend and native Moshomo AI layer.
 - `packages/shared`: shared workforce domain constants and types.
 - `docs/architecture`: architecture notes.
 - `supabase`: future migrations, policies, seed data, and storage notes.
+
+Key architecture docs:
+
+- `docs/architecture/supabase-foundation.md`: company/auth/schema/RLS foundation.
+- `docs/architecture/moshomo-ai-design.md`: native Moshomo AI design.
 
 ## Aloy Agent Layer
 

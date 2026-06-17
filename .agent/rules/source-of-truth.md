@@ -6,6 +6,8 @@ Current source-of-truth notes:
 - `IMPLEMENTATION_PLAN.md` is the current build roadmap.
 - Source code becomes source of truth once implementation exists.
 - `docs/architecture/monorepo.md` documents the current app/package layout.
+- `docs/architecture/supabase-foundation.md` documents the first company/auth/schema/RLS foundation.
+- `docs/architecture/moshomo-ai-design.md` documents the native Moshomo AI first slice.
 - `docs/architecture/pori-workforce-adaptation.md` documents how Pori should be adapted for workforce operations.
 - Supabase schema, auth, storage policies, and Pori tool contracts must be documented before behavior depends on them.
 
