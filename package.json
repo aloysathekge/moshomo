@@ -15,6 +15,7 @@
     "verify": "pnpm lint && pnpm typecheck"
   },
   "devDependencies": {
+    "supabase": "^2.106.0",
     "turbo": "latest",
     "typescript": "latest"
   }
