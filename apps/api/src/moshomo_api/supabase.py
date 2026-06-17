@@ -147,6 +147,21 @@ class SupabaseRestClient:
             )
         return payload
 
+    async def delete(
+        self,
+        table: str,
+        *,
+        access_token: str,
+        filters: dict[str, str | int],
+    ) -> None:
+        await self._request(
+            "DELETE",
+            f"/{table}",
+            access_token=access_token,
+            params=filters,
+            prefer="return=minimal",
+        )
+
     async def rpc(
         self,
         function_name: str,

@@ -2,7 +2,7 @@ import type { Session } from "@supabase/supabase-js";
 
 const apiUrl = process.env.NEXT_PUBLIC_MOSHOMO_API_URL ?? "http://localhost:8000";
 
-export async function moshomoApi<T>(path: string, options: { method?: "GET" | "POST" | "PATCH"; session: Session; companyId?: string; body?: unknown }): Promise<T> {
+export async function moshomoApi<T>(path: string, options: { method?: "GET" | "POST" | "PATCH" | "DELETE"; session: Session; companyId?: string; body?: unknown }): Promise<T> {
   const headers = new Headers({ Authorization: `Bearer ${options.session.access_token}` });
   if (options.companyId) headers.set("X-Company-ID", options.companyId);
   if (options.body !== undefined) headers.set("Content-Type", "application/json");
@@ -11,5 +11,7 @@ export async function moshomoApi<T>(path: string, options: { method?: "GET" | "P
     const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
     throw new Error(payload?.detail ?? `Request failed (${response.status})`);
   }
-  return (await response.json()) as T;
+  if (response.status === 204 || response.headers.get("content-length") === "0") return undefined as T;
+  const text = await response.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }

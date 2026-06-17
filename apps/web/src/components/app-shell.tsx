@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { MouseEvent, useEffect, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 type Role = "admin" | "manager" | "employee";
@@ -43,6 +43,32 @@ export function AppShell({ children, companyName, logoUrl, role = "employee" }: 
     router.replace("/auth");
   }
 
+  const [hash, setHash] = useState("");
+  useEffect(() => {
+    const sync = () => setHash(window.location.hash);
+    sync();
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
+  const isActive = (href: string) => {
+    const target = href.includes("#") ? `#${href.split("#")[1]}` : "";
+    return target ? hash === target : hash === "" || hash === "#";
+  };
+
+  // Navigate in-page sections by setting the hash directly. Assigning location.hash
+  // always *replaces* the fragment, so it never accumulates (e.g. #employees#shifts).
+  const navigate = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    const key = href.includes("#") ? href.slice(href.indexOf("#") + 1) : "";
+    if (key) {
+      if (window.location.hash !== `#${key}`) window.location.hash = key;
+    } else if (window.location.hash) {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    }
+  };
+
   const items = navigation[role];
   return (
     <main className="min-h-screen text-ink md:grid md:grid-cols-[276px_1fr]">
@@ -53,24 +79,25 @@ export function AppShell({ children, companyName, logoUrl, role = "employee" }: 
             "radial-gradient(520px 300px at 50% -10%, rgba(111,224,168,0.16), transparent 60%), linear-gradient(180deg, #103a28 0%, #0c2a1d 100%)",
         }}
       >
-        <Link className="flex items-center gap-3 px-1" href="/app">
+        <a className="flex items-center gap-3 px-1" href="/app" onClick={(event) => navigate(event, "/app")}>
           <CompanyLogo companyName={companyName} logoUrl={logoUrl} />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{companyName ?? "Moshomo"}</p>
             <p className="mt-0.5 text-xs capitalize text-brand-300/80">{role} workspace</p>
           </div>
-        </Link>
+        </a>
 
         <nav className="mt-9 space-y-1" aria-label="Workspace navigation">
-          {items.map((item, index) => (
-            <Link
-              className={index === 0 ? "nav-link nav-link-active" : "nav-link"}
+          {items.map((item) => (
+            <a
+              className={isActive(item.href) ? "nav-link nav-link-active" : "nav-link"}
               href={item.href}
               key={item.label}
+              onClick={(event) => navigate(event, item.href)}
             >
               <Icon name={item.icon} />
               {item.label}
-            </Link>
+            </a>
           ))}
         </nav>
 
@@ -81,12 +108,13 @@ export function AppShell({ children, companyName, logoUrl, role = "employee" }: 
           <p className="mt-2 text-sm leading-5 text-white/75">
             Your workforce copilot is ready when you are.
           </p>
-          <Link
+          <a
             className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-white transition hover:text-brand-300"
             href="/app#assistant"
+            onClick={(event) => navigate(event, "/app#assistant")}
           >
             Ask a question <span aria-hidden>→</span>
-          </Link>
+          </a>
         </div>
         <button
           className="mt-3 flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white/60 transition hover:bg-white/[0.08] hover:text-white"
@@ -127,18 +155,19 @@ export function AppShell({ children, companyName, logoUrl, role = "employee" }: 
             className="mt-4 flex gap-2 overflow-x-auto pb-1 md:hidden"
             aria-label="Mobile workspace navigation"
           >
-            {items.map((item, index) => (
-              <Link
+            {items.map((item) => (
+              <a
                 className={`whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-semibold transition ${
-                  index === 0
+                  isActive(item.href)
                     ? "bg-brand-900 text-white"
                     : "border border-[var(--line-strong)] bg-surface text-ink-muted"
                 }`}
                 href={item.href}
                 key={item.label}
+                onClick={(event) => navigate(event, item.href)}
               >
                 {item.label}
-              </Link>
+              </a>
             ))}
           </nav>
         </header>

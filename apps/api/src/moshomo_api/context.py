@@ -21,6 +21,14 @@ class ActorContext:
     access_token: str = field(repr=False)
 
 
+def require_company_admin(actor: "ActorContext", company_id: UUID) -> None:
+    if actor.company_id != company_id or actor.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Company admin access is required",
+        )
+
+
 async def get_actor_context(
     active_company_id: UUID = Header(alias="X-Company-ID"),
     user: AuthenticatedUser = Depends(get_current_user),

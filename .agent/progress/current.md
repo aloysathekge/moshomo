@@ -2,7 +2,7 @@
 
 ## Active Task
 
-Web UI/UX elevated to a premium "refined emerald" design system across every web surface. Next planned step is to strip/copy Pori into a native Moshomo AI layer. The company branding migration is still awaiting approval.
+Web UI/UX elevated to a premium "refined emerald" design system, and the admin workspace now has real employee management (list/search/add/edit, change role, remove) plus an employee-documents feature (UI + API + migration). Two migrations await approval (`...000300_company_branding`, `...000400_employee_documents`). Next planned step is to strip/copy Pori into a native Moshomo AI layer.
 
 ## Decisions Made
 
@@ -53,6 +53,12 @@ Web UI/UX elevated to a premium "refined emerald" design system across every web
 - Redesigned the landing page, reformatted+elevated `auth` and `invitations/accept`, polished `auth/callback`, elevated `app-shell` (gradient sidebar, sticky blurred header, mobile nav), and elevated all three dashboards + onboarding shared primitives.
 - `apps/web/AGENTS.md` warns this is a modified Next.js 16.2.9; consult `node_modules/.pnpm/next@.../next/dist/docs/` before writing Next.js code. Confirmed Tailwind v4 (`@import "tailwindcss"` + `@theme`) and global CSS import in the root layout.
 - Web verification passed: `pnpm --filter @moshomo/web typecheck`, `lint`, and `build` (all 6 routes prerender static).
+- The `/app` admin experience was restructured from a full-screen onboarding gate into hash-driven sections (home, employees, departments, settings, plus coming-soon for leave/shifts/assistant). The placeholder "Workforce overview" activity feed and the dashboard logo card were removed.
+- "Finish setting up" now only appears (as a Settings checklist + a dashboard banner) when setup is incomplete; completeness = logo set AND >=1 department AND >=1 teammate.
+- New admin Employees panel (`apps/web/src/components/employees-panel.tsx`): real list/search, add (invite), profile modal with edit, change role / make manager, remove, and document upload/list/signed-URL view/delete. Managers get a read-only team view; non-admins do not see admin actions. Employee role + account state per row is derived from `company_memberships` + `company_invitations`.
+- New API endpoints (`apps/api/src/moshomo_api/routers/employee_management.py`, registered in `main.py`): `PATCH /companies/{cid}/employees/{eid}` (fields), `PATCH .../role` (updates membership + pending invitation; blocks self-demote), `DELETE .../{eid}` (blocks removing self), and document `POST`/`GET`/`DELETE`. Added `SupabaseRestClient.delete` and `context.require_company_admin`. Role-change and remove use existing RLS (no migration).
+- New migration `supabase/migrations/20260617000400_employee_documents.sql`: `employee_documents` table + RLS (admin/owner/manager read, admin write) and a PRIVATE `employee-documents` storage bucket (PDF/PNG/JPEG/WebP, 10 MB) with path `<company_id>/<employee_id>/<file>`. NOT applied — approval-gated; documents UI degrades gracefully until it is applied.
+- API verification: `uv run --project apps/api python -m compileall apps/api/src` and `pytest apps/api/tests -q` (21 passed, incl. 8 new employee-management tests).
 
 ## Important Discoveries
 
@@ -65,12 +71,13 @@ Web UI/UX elevated to a premium "refined emerald" design system across every web
 ## Blockers
 
 - Docker is unavailable for a local Supabase reset.
-- Private employee-document/company-knowledge Storage policies and Moshomo AI tool contracts are not implemented yet.
+- Company-knowledge Storage policies and Moshomo AI tool contracts are not implemented yet.
 - Company logo upload remains unavailable until migration `20260617000300_company_branding.sql` is approved and applied.
+- Employee documents remain unavailable until migration `20260617000400_employee_documents.sql` is approved and applied (table + private bucket). The web documents UI shows an "available once applied" notice until then.
 - Real Supabase invitation email delivery is not integration-tested; it requires backend-only secret-key and redirect configuration.
 - Pori is not connected yet; `apps/api/src/moshomo_api/pori_adapter.py` is only a temporary placeholder.
 - Native `moshomo_ai` has not been created yet.
 
 ## Next Session Should Start With
 
-Begin the Pori strip/copy into a native `moshomo_ai` layer per `docs/architecture/moshomo-ai-design.md` and `docs/architecture/pori-to-moshomo-ai-evaluation.md` (tool registry + memory contracts first, then read-only workforce tools and the assistant run loop). Separately, after explicit approval, apply `20260617000300_company_branding.sql`, run linked database lint, and integration-test admin logo upload from the web dashboard.
+Begin the Pori strip/copy into a native `moshomo_ai` layer per `docs/architecture/moshomo-ai-design.md` and `docs/architecture/pori-to-moshomo-ai-evaluation.md` (tool registry + memory contracts first, then read-only workforce tools and the assistant run loop). Separately, after explicit approval, apply `20260617000300_company_branding.sql` and `20260617000400_employee_documents.sql`, run linked database lint, and integration-test admin logo upload + employee document upload from the web dashboard.
