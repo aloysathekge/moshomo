@@ -44,6 +44,15 @@ class DepartmentCreateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
 
 
+class CompanyBrandingRequest(BaseModel):
+    logo_path: str | None = Field(default=None, max_length=240)
+
+
+class CompanyBrandingResponse(BaseModel):
+    company_id: UUID
+    logo_path: str | None
+
+
 class DepartmentResponse(BaseModel):
     id: UUID
     company_id: UUID
@@ -89,6 +98,38 @@ def _require_company_admin(actor: ActorContext, company_id: UUID) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Company admin access is required",
         )
+
+
+@router.patch(
+    "/companies/{company_id}/branding",
+    response_model=CompanyBrandingResponse,
+)
+async def update_company_branding(
+    company_id: UUID,
+    payload: CompanyBrandingRequest,
+    actor: ActorContext = Depends(get_actor_context),
+    client: SupabaseRestClient = Depends(get_supabase_rest_client),
+) -> CompanyBrandingResponse:
+    _require_company_admin(actor, company_id)
+    expected_prefix = f"{company_id}/"
+    if payload.logo_path is not None and not payload.logo_path.startswith(expected_prefix):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Company logo must be stored inside the company asset folder",
+        )
+
+    updated = await client.update(
+        "companies",
+        access_token=actor.access_token,
+        filters={"id": f"eq.{company_id}"},
+        values={"logo_path": payload.logo_path},
+    )
+    if len(updated) != 1:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Company was not found",
+        )
+    return CompanyBrandingResponse(company_id=company_id, logo_path=payload.logo_path)
 
 
 @router.post(

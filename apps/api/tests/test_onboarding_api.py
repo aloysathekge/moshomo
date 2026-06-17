@@ -183,6 +183,51 @@ def test_admin_creates_department() -> None:
     assert response.json()["name"] == "Operations"
 
 
+def test_admin_updates_company_logo_path() -> None:
+    company_id = uuid4()
+    _, actor = _identity(company_id)
+    rest = FakeOnboardingRestClient(company_id)
+    logo_path = f"{company_id}/logo.webp"
+
+    app.dependency_overrides[get_actor_context] = lambda: actor
+    app.dependency_overrides[get_supabase_rest_client] = lambda: rest
+    try:
+        with TestClient(app) as client:
+            response = client.patch(
+                f"/companies/{company_id}/branding",
+                json={"logo_path": logo_path},
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "company_id": str(company_id),
+        "logo_path": logo_path,
+    }
+    assert rest.calls[-1][1] == "companies"
+
+
+def test_non_admin_cannot_update_company_logo_path() -> None:
+    company_id = uuid4()
+    _, actor = _identity(company_id, role="employee")
+    rest = FakeOnboardingRestClient(company_id)
+
+    app.dependency_overrides[get_actor_context] = lambda: actor
+    app.dependency_overrides[get_supabase_rest_client] = lambda: rest
+    try:
+        with TestClient(app) as client:
+            response = client.patch(
+                f"/companies/{company_id}/branding",
+                json={"logo_path": f"{company_id}/logo.png"},
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 403
+    assert not rest.calls
+
+
 def test_admin_creates_employee_and_sends_assigned_role_invitation() -> None:
     company_id = uuid4()
     _, actor = _identity(company_id)

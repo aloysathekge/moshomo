@@ -271,11 +271,19 @@ Policy sketch:
 
 Buckets:
 
+- `company-assets`
 - `employee-documents`
 - `company-knowledge`
 
 Rules:
 
+- Company logos are public branding assets stored at
+  `<company_id>/<filename>` in `company-assets`.
+- Active company members may list company branding objects; only company admins
+  may create, replace, or delete them.
+- Company logo uploads accept PNG, JPEG, and WebP files up to 5 MB.
+- `companies.logo_path` stores the object path, not a signed or environment-bound
+  URL. Clients derive the public URL from Supabase Storage.
 - Employee documents are private.
 - Company knowledge files are private by default.
 - Signed URLs should be short-lived.

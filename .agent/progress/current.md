@@ -2,7 +2,7 @@
 
 ## Active Task
 
-The Supabase foundation and API trust boundary are implemented. Company onboarding and invitations are implemented locally and awaiting migration approval.
+Premium role-aware web dashboards and company branding are implemented locally. The company branding migration is awaiting approval.
 
 ## Decisions Made
 
@@ -42,7 +42,12 @@ The Supabase foundation and API trust boundary are implemented. Company onboardi
 - Web and mobile now branch workspace rendering from the active `company_memberships.role`: admins receive company setup/admin workspace, managers receive team operations, and employees receive self-service. Client role branching controls presentation only; API permission checks and RLS remain authoritative.
 - Added transactional company bootstrap, department creation, employee invitation, resend, and invitation acceptance APIs.
 - Admin and manager permissions compose on top of a linked employee identity.
-- Migration `20260617000200_company_onboarding.sql` passed parsing and remote dry-run but is not applied yet.
+- Migration `20260617000200_company_onboarding.sql` is applied remotely.
+- Admin, manager, and employee web workspaces now use a responsive premium sidebar with role-specific navigation and dashboard content.
+- Company admins can provide a PNG, JPEG, or WebP logo during setup or from dashboard settings.
+- Company branding uses public `company-assets` objects at `<company_id>/<filename>`; members may read branding and only admins may write it.
+- `PATCH /companies/{company_id}/branding` validates company ownership and persists `companies.logo_path`.
+- Migration `20260617000300_company_branding.sql` passes remote dry-run but is not applied.
 
 ## Important Discoveries
 
@@ -55,11 +60,12 @@ The Supabase foundation and API trust boundary are implemented. Company onboardi
 ## Blockers
 
 - Docker is unavailable for a local Supabase reset.
-- Supabase Storage policies and Moshomo AI tool contracts are not implemented yet.
+- Private employee-document/company-knowledge Storage policies and Moshomo AI tool contracts are not implemented yet.
+- Company logo upload remains unavailable until migration `20260617000300_company_branding.sql` is approved and applied.
 - Real Supabase invitation email delivery is not integration-tested; it requires backend-only secret-key and redirect configuration.
 - Pori is not connected yet; `apps/api/src/moshomo_api/pori_adapter.py` is only a temporary placeholder.
 - Native `moshomo_ai` has not been created yet.
 
 ## Next Session Should Start With
 
-After explicit approval, apply `20260617000200_company_onboarding.sql` and run linked database lint. Then build the web signup/company-onboarding UI against these APIs.
+After explicit approval, apply `20260617000300_company_branding.sql`, run linked database lint, and integration-test admin logo upload from the web dashboard.

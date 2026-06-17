@@ -34,6 +34,7 @@ Current read-only endpoints:
 Current onboarding endpoints:
 
 - `POST /companies`
+- `PATCH /companies/{company_id}/branding`
 - `POST /companies/{company_id}/departments`
 - `POST /companies/{company_id}/invitations`
 - `POST /companies/{company_id}/invitations/{invitation_id}/resend`
