@@ -5,6 +5,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from moshomo_api.routers.health import router as health_router
+from moshomo_api.routers.employees import router as employees_router
+from moshomo_api.routers.onboarding import router as onboarding_router
 from moshomo_api.routers.workforce import router as workforce_router
 
 app = FastAPI(
@@ -23,6 +25,8 @@ app.add_middleware(
 
 app.include_router(health_router)
 app.include_router(workforce_router)
+app.include_router(employees_router)
+app.include_router(onboarding_router)
 
 
 def run() -> None:
