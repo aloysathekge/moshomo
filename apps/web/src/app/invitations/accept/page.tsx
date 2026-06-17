@@ -63,19 +63,26 @@ export default function AcceptInvitationPage() {
 
   if (accepted) {
     return (
-      <main className="grid min-h-screen place-items-center bg-stone-100 p-6">
-        <section className="w-full max-w-xl rounded-3xl bg-white p-8 shadow-sm sm:p-10">
-          <p className="text-sm font-semibold text-emerald-700">Invitation accepted</p>
-          <h1 className="mt-2 text-3xl font-semibold">Welcome to your team</h1>
-          <p className="mt-3 leading-7 text-stone-600">
+      <main className="grid min-h-screen place-items-center p-6">
+        <section className="premium-card w-full max-w-xl animate-rise p-8 sm:p-10">
+          <span className="badge">
+            <span className="size-1.5 rounded-full bg-brand-500" />
+            Invitation accepted
+          </span>
+          <h1 className="mt-5 text-3xl font-semibold tracking-tight">
+            Welcome to your team
+          </h1>
+          <p className="mt-3 leading-7 text-ink-soft">
             Your employee profile and company role are connected. Use the same
             email and password to sign in on web or mobile.
           </p>
 
-          <div className="mt-8 rounded-2xl bg-emerald-950 p-6 text-white">
-            <p className="text-sm font-semibold text-emerald-300">Moshomo mobile</p>
-            <h2 className="mt-2 text-2xl font-semibold">Take your workspace with you</h2>
-            <p className="mt-2 text-sm leading-6 text-emerald-100">
+          <div className="hero-panel mt-8">
+            <p className="text-sm font-semibold text-brand-300">Moshomo mobile</p>
+            <h2 className="mt-2 text-2xl font-semibold text-white">
+              Take your workspace with you
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-emerald-100/80">
               Download the app, then sign in with the account you just created.
               Your company and role will load automatically.
             </p>
@@ -83,7 +90,7 @@ export default function AcceptInvitationPage() {
           </div>
 
           <button
-            className="mt-6 w-full rounded-xl bg-emerald-700 px-5 py-3 font-semibold text-white"
+            className="primary-button mt-6 w-full py-3.5"
             onClick={() => router.replace("/app")}
           >
             Continue on web
@@ -94,31 +101,35 @@ export default function AcceptInvitationPage() {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-stone-100 p-6">
-      <section className="w-full max-w-md rounded-3xl bg-white p-8 shadow-sm">
-        <p className="text-sm font-semibold text-emerald-700">You are invited</p>
-        <h1 className="mt-2 text-3xl font-semibold">Join your team</h1>
-        <p className="mt-3 text-stone-600">
+    <main className="grid min-h-screen place-items-center p-6">
+      <section className="premium-card w-full max-w-md animate-rise p-8 sm:p-9">
+        <p className="eyebrow">You are invited</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Join your team</h1>
+        <p className="mt-3 text-ink-muted">
           Choose a password, then Moshomo will connect your account to your
           employee profile and role.
         </p>
         <form className="mt-7 space-y-4" onSubmit={accept}>
-          <label className="block text-sm font-medium">
+          <label className="block text-sm font-medium text-ink-soft">
             Password
             <input
-              className="mt-2 w-full rounded-xl border border-stone-300 px-4 py-3"
+              className="input mt-2"
               name="password"
               type="password"
               minLength={8}
               required
             />
           </label>
-          {message && <p className="text-sm text-rose-700">{message}</p>}
+          {message && (
+            <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {message}
+            </p>
+          )}
           <button
-            className="w-full rounded-xl bg-emerald-700 px-5 py-3 font-semibold text-white disabled:opacity-50"
+            className="primary-button w-full py-3.5"
             disabled={!session || !invitationId || accepting}
           >
-            {accepting ? "Joining your team..." : "Accept invitation"}
+            {accepting ? "Joining your team…" : "Accept invitation"}
           </button>
         </form>
       </section>

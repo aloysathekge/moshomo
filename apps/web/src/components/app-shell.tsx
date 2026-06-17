@@ -45,51 +45,112 @@ export function AppShell({ children, companyName, logoUrl, role = "employee" }: 
 
   const items = navigation[role];
   return (
-    <main className="min-h-screen bg-[#f4f5f7] text-[#17211b] md:grid md:grid-cols-[272px_1fr]">
-      <aside className="sticky top-0 hidden h-screen flex-col overflow-y-auto border-r border-white/10 bg-[#10281e] px-5 py-6 text-white md:flex">
-        <Link className="flex items-center gap-3 px-2" href="/app">
+    <main className="min-h-screen text-ink md:grid md:grid-cols-[276px_1fr]">
+      <aside
+        className="sticky top-0 hidden h-screen flex-col overflow-y-auto border-r border-white/5 px-5 py-6 text-white md:flex"
+        style={{
+          background:
+            "radial-gradient(520px 300px at 50% -10%, rgba(111,224,168,0.16), transparent 60%), linear-gradient(180deg, #103a28 0%, #0c2a1d 100%)",
+        }}
+      >
+        <Link className="flex items-center gap-3 px-1" href="/app">
           <CompanyLogo companyName={companyName} logoUrl={logoUrl} />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{companyName ?? "Moshomo"}</p>
-            <p className="mt-0.5 text-xs capitalize text-emerald-200/70">{role} workspace</p>
+            <p className="mt-0.5 text-xs capitalize text-brand-300/80">{role} workspace</p>
           </div>
         </Link>
 
-        <nav className="mt-10 space-y-1.5" aria-label="Workspace navigation">
+        <nav className="mt-9 space-y-1" aria-label="Workspace navigation">
           {items.map((item, index) => (
-            <Link className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${index === 0 ? "bg-white text-[#173f2d] shadow-lg shadow-black/10" : "text-emerald-50/75 hover:bg-white/8 hover:text-white"}`} href={item.href} key={item.label}>
+            <Link
+              className={index === 0 ? "nav-link nav-link-active" : "nav-link"}
+              href={item.href}
+              key={item.label}
+            >
               <Icon name={item.icon} />
               {item.label}
             </Link>
           ))}
         </nav>
 
-        <div className="mt-auto rounded-2xl border border-white/10 bg-white/6 p-4">
-          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-200"><Icon name="sparkles" /> MOSHOMO AI</div>
-          <p className="mt-2 text-sm leading-5 text-white/75">Your workforce copilot is ready when you are.</p>
-          <Link className="mt-3 inline-flex text-sm font-semibold text-white" href="/app#assistant">Ask a question <span className="ml-1">→</span></Link>
+        <div className="mt-auto rounded-2xl border border-white/10 bg-white/[0.06] p-4">
+          <div className="flex items-center gap-2 text-xs font-semibold tracking-wide text-brand-300">
+            <Icon name="sparkles" /> MOSHOMO AI
+          </div>
+          <p className="mt-2 text-sm leading-5 text-white/75">
+            Your workforce copilot is ready when you are.
+          </p>
+          <Link
+            className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-white transition hover:text-brand-300"
+            href="/app#assistant"
+          >
+            Ask a question <span aria-hidden>→</span>
+          </Link>
         </div>
-        <button className="mt-4 flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white/65 hover:bg-white/8 hover:text-white" onClick={signOut}><Icon name="profile" />Sign out</button>
+        <button
+          className="mt-3 flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white/60 transition hover:bg-white/[0.08] hover:text-white"
+          onClick={signOut}
+        >
+          <Icon name="profile" />
+          Sign out
+        </button>
       </aside>
 
       <section className="min-w-0">
-        <header className="border-b border-stone-200/80 bg-white/90 px-5 py-4 backdrop-blur md:px-8">
+        <header className="sticky top-0 z-10 border-b border-[var(--line)] bg-white/80 px-5 py-4 backdrop-blur-xl md:px-8">
           <div className="flex items-center justify-between gap-4">
-            <div className="flex min-w-0 items-center gap-3 md:hidden"><CompanyLogo companyName={companyName} logoUrl={logoUrl} /><div className="min-w-0"><p className="truncate text-sm font-semibold">{companyName ?? "Moshomo"}</p><p className="text-xs capitalize text-stone-500">{role} workspace</p></div></div>
-            <div className="hidden md:block"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Workforce OS</p></div>
-            <div className="flex items-center gap-3"><span className="hidden rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold capitalize text-emerald-800 sm:inline">{role}</span><button className="rounded-xl border border-stone-200 px-3 py-2 text-sm font-medium text-stone-600 md:hidden" onClick={signOut}>Sign out</button><div className="grid size-9 place-items-center rounded-full bg-[#d8f3e5] text-sm font-bold text-[#174d35]">{role.slice(0, 1).toUpperCase()}</div></div>
+            <div className="flex min-w-0 items-center gap-3 md:hidden">
+              <CompanyLogo companyName={companyName} logoUrl={logoUrl} />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">{companyName ?? "Moshomo"}</p>
+                <p className="text-xs capitalize text-ink-muted">{role} workspace</p>
+              </div>
+            </div>
+            <p className="hidden text-xs font-semibold uppercase tracking-[0.18em] text-brand-700 md:block">
+              Workforce OS
+            </p>
+            <div className="flex items-center gap-3">
+              <span className="badge hidden sm:inline-flex">{role}</span>
+              <button
+                className="secondary-button px-3 py-2 text-sm md:hidden"
+                onClick={signOut}
+              >
+                Sign out
+              </button>
+              <div className="grid size-9 place-items-center rounded-full bg-brand-100 text-sm font-bold text-brand-800 ring-1 ring-brand-300/40">
+                {role.slice(0, 1).toUpperCase()}
+              </div>
+            </div>
           </div>
-          <nav className="mt-4 flex gap-2 overflow-x-auto pb-1 md:hidden" aria-label="Mobile workspace navigation">{items.map((item) => <Link className="whitespace-nowrap rounded-full border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-600" href={item.href} key={item.label}>{item.label}</Link>)}</nav>
+          <nav
+            className="mt-4 flex gap-2 overflow-x-auto pb-1 md:hidden"
+            aria-label="Mobile workspace navigation"
+          >
+            {items.map((item, index) => (
+              <Link
+                className={`whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-semibold transition ${
+                  index === 0
+                    ? "bg-brand-900 text-white"
+                    : "border border-[var(--line-strong)] bg-surface text-ink-muted"
+                }`}
+                href={item.href}
+                key={item.label}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
         </header>
-        <div className="px-5 py-6 sm:px-7 md:px-8 md:py-8 xl:px-10">{children}</div>
+        <div className="animate-fade px-5 py-6 sm:px-7 md:px-8 md:py-9 xl:px-10">{children}</div>
       </section>
     </main>
   );
 }
 
 function CompanyLogo({ companyName, logoUrl }: { companyName?: string; logoUrl?: string }) {
-  if (logoUrl) return <div aria-label={`${companyName ?? "Company"} logo`} className="size-10 shrink-0 rounded-xl bg-white bg-contain bg-center bg-no-repeat shadow-sm" role="img" style={{ backgroundImage: `url("${logoUrl}")` }} />;
-  return <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#c9f1dc] text-sm font-black text-[#174d35]">{(companyName ?? "M").slice(0, 2).toUpperCase()}</div>;
+  if (logoUrl) return <div aria-label={`${companyName ?? "Company"} logo`} className="size-10 shrink-0 rounded-xl bg-white bg-contain bg-center bg-no-repeat shadow-sm ring-1 ring-black/5" role="img" style={{ backgroundImage: `url("${logoUrl}")` }} />;
+  return <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-100 text-sm font-black text-brand-800 ring-1 ring-brand-300/40">{(companyName ?? "M").slice(0, 2).toUpperCase()}</div>;
 }
 
 function Icon({ name }: { name: IconName }) {

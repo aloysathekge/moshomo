@@ -2,7 +2,7 @@
 
 ## Active Task
 
-Premium role-aware web dashboards and company branding are implemented locally. The company branding migration is awaiting approval.
+Web UI/UX elevated to a premium "refined emerald" design system across every web surface. Next planned step is to strip/copy Pori into a native Moshomo AI layer. The company branding migration is still awaiting approval.
 
 ## Decisions Made
 
@@ -48,6 +48,11 @@ Premium role-aware web dashboards and company branding are implemented locally. 
 - Company branding uses public `company-assets` objects at `<company_id>/<filename>`; members may read branding and only admins may write it.
 - `PATCH /companies/{company_id}/branding` validates company ownership and persists `companies.logo_path`.
 - Migration `20260617000300_company_branding.sql` passes remote dry-run but is not applied.
+- Web UI/UX was upgraded to a premium "refined emerald" direction (user-chosen over dark-luxe and clean-minimal), scoped to the whole web app; mobile is unchanged this pass.
+- `apps/web/src/app/globals.css` now holds the design system: network-free system variable-font stack (no `next/font` Google fetch), unified emerald + ink + surface tokens via Tailwind v4 `@theme`, layered shadow scale, refined `premium-card`/`hero-panel`/`input`/button classes, and new `nav-link`, `metric-card`, `badge`, `chip`, `empty-state`, `notice`, `surface-card` utilities plus `rise`/`fade` motion.
+- Redesigned the landing page, reformatted+elevated `auth` and `invitations/accept`, polished `auth/callback`, elevated `app-shell` (gradient sidebar, sticky blurred header, mobile nav), and elevated all three dashboards + onboarding shared primitives.
+- `apps/web/AGENTS.md` warns this is a modified Next.js 16.2.9; consult `node_modules/.pnpm/next@.../next/dist/docs/` before writing Next.js code. Confirmed Tailwind v4 (`@import "tailwindcss"` + `@theme`) and global CSS import in the root layout.
+- Web verification passed: `pnpm --filter @moshomo/web typecheck`, `lint`, and `build` (all 6 routes prerender static).
 
 ## Important Discoveries
 
@@ -68,4 +73,4 @@ Premium role-aware web dashboards and company branding are implemented locally. 
 
 ## Next Session Should Start With
 
-After explicit approval, apply `20260617000300_company_branding.sql`, run linked database lint, and integration-test admin logo upload from the web dashboard.
+Begin the Pori strip/copy into a native `moshomo_ai` layer per `docs/architecture/moshomo-ai-design.md` and `docs/architecture/pori-to-moshomo-ai-evaluation.md` (tool registry + memory contracts first, then read-only workforce tools and the assistant run loop). Separately, after explicit approval, apply `20260617000300_company_branding.sql`, run linked database lint, and integration-test admin logo upload from the web dashboard.
