@@ -2,7 +2,7 @@
 
 ## Active Task
 
-Web UI/UX elevated to a premium "refined emerald" design system, and the admin workspace now has real employee management (list/search/add/edit, change role, remove) plus an employee-documents feature (UI + API + migration). Two migrations await approval (`...000300_company_branding`, `...000400_employee_documents`). Next planned step is to strip/copy Pori into a native Moshomo AI layer.
+The native Moshomo AI layer (read-only workforce assistant) is implemented: a provider-agnostic LLM layer (Anthropic/OpenAI/Google), a Pori-style tool registry with three RLS-scoped read-only tools, a manual agentic loop, and an auditable `assistant_runs` row per run, exposed at `POST /workforce/assistant`. Default provider/model is `anthropic` / `claude-sonnet-4-6` (config-driven). Earlier: premium web UI/UX + real admin employee management + employee-documents. Two migrations still await approval (`...000300_company_branding`, `...000400_employee_documents`).
 
 ## Decisions Made
 
@@ -64,6 +64,11 @@ Web UI/UX elevated to a premium "refined emerald" design system, and the admin w
 - New API endpoints (`apps/api/src/moshomo_api/routers/employee_management.py`, registered in `main.py`): `PATCH /companies/{cid}/employees/{eid}` (fields), `PATCH .../role` (updates membership + pending invitation; blocks self-demote), `DELETE .../{eid}` (blocks removing self), and document `POST`/`GET`/`DELETE`. Added `SupabaseRestClient.delete` and `context.require_company_admin`. Role-change and remove use existing RLS (no migration).
 - New migration `supabase/migrations/20260617000400_employee_documents.sql`: `employee_documents` table + RLS (admin/owner/manager read, admin write) and a PRIVATE `employee-documents` storage bucket (PDF/PNG/JPEG/WebP, 10 MB) with path `<company_id>/<employee_id>/<file>`. NOT applied — approval-gated; documents UI degrades gracefully until it is applied.
 - API verification: `uv run --project apps/api python -m compileall apps/api/src` and `pytest apps/api/tests -q` (21 passed, incl. 8 new employee-management tests).
+- Native `moshomo_ai` package added under `apps/api/src/moshomo_ai/` (read-only first slice per `docs/architecture/moshomo-ai-design.md`): `llm/` (provider-agnostic `base.py` protocol + `anthropic.py`/`openai.py`/`google.py` clients + `factory.py`; default anthropic/`claude-sonnet-4-6`, switchable via `MOSHOMO_AI_PROVIDER`/`MOSHOMO_AI_MODEL` + that provider's key), `tools/` (Pori-style Pydantic registry + `search_employees`/`get_employee_profile`/`get_company_knowledge`), `agent.py` (manual loop, step-capped), `runs.py` (inserts one `assistant_runs` audit row at completion), `context.py` (RunContext), `prompts/workforce_assistant.md`.
+- Safety property: tools read via the **caller's** Supabase token, so RLS (not the tool) decides visibility; registry holds no write tools. Audit is insert-once (assistant_runs has no UPDATE policy).
+- `POST /workforce/assistant` now runs the real assistant (replaces the deleted `pori_adapter.py`). Returns `{run_id, status, answer, refusal_reason, citations, provider, model}`. Returns 503 when the configured provider's API key is absent.
+- Added deps `anthropic`, `openai`, `google-genai`; config keys `moshomo_ai_provider/model/max_steps/max_tokens/request_timeout_seconds` + `anthropic/openai/google_api_key`.
+- API verification after AI layer: `compileall` clean; `pytest apps/api/tests -q` = **27 passed** (incl. 6 new assistant tests with a scripted fake LLM + fake Supabase). Provider modules import/construct; Google tool declarations + all three message converters build. No runtime LLM/network call is made in tests.
 
 ## Important Discoveries
 
@@ -80,9 +85,9 @@ Web UI/UX elevated to a premium "refined emerald" design system, and the admin w
 - Company logo upload remains unavailable until migration `20260617000300_company_branding.sql` is approved and applied.
 - Employee documents remain unavailable until migration `20260617000400_employee_documents.sql` is approved and applied (table + private bucket). The web documents UI shows an "available once applied" notice until then.
 - Real Supabase invitation email delivery is not integration-tested; it requires backend-only secret-key and redirect configuration.
-- Pori is not connected yet; `apps/api/src/moshomo_api/pori_adapter.py` is only a temporary placeholder.
-- Native `moshomo_ai` has not been created yet.
+- Moshomo AI has not been run against a live LLM yet — needs an API key (`MOSHOMO_ANTHROPIC_API_KEY` etc.) + applied Supabase data to integration-test `POST /workforce/assistant`. Cross-provider refusal detection is best-effort (only Anthropic exposes an explicit refusal stop reason).
+- Web/mobile "Ask Moshomo" UI is not wired to `POST /workforce/assistant` yet.
 
 ## Next Session Should Start With
 
-Begin the Pori strip/copy into a native `moshomo_ai` layer per `docs/architecture/moshomo-ai-design.md` and `docs/architecture/pori-to-moshomo-ai-evaluation.md` (tool registry + memory contracts first, then read-only workforce tools and the assistant run loop). Separately, after explicit approval, apply `20260617000300_company_branding.sql` and `20260617000400_employee_documents.sql`, run linked database lint, and integration-test admin logo upload + employee document upload from the web dashboard.
+Integration-test `POST /workforce/assistant` against a live provider: set `MOSHOMO_ANTHROPIC_API_KEY` (+ Supabase keys), ask a workforce question, confirm grounded answer + one `assistant_runs` row; then verify the provider seam by switching `MOSHOMO_AI_PROVIDER`/`MOSHOMO_AI_MODEL` to openai/google with their keys. After that, the next AI increments are guarded write tools (leave/shift drafts behind policy + HITL), streaming/multi-turn conversations, and wiring the web/mobile "Ask Moshomo" UI to the endpoint. Separately, after explicit approval, apply `20260617000300_company_branding.sql` and `20260617000400_employee_documents.sql`, run linked database lint, and integration-test logo + document upload.

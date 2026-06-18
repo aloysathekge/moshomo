@@ -6,7 +6,7 @@ AI-native workforce operating system for employee management, leave management, 
 - Safe verification: `pnpm lint`, `pnpm typecheck`, `pnpm --filter @moshomo/web build`, and `uv run --project apps/api python -m compileall apps/api/src`.
 - Source of truth: PRD.txt is the current product source of truth. Source code becomes source of truth once implemented. Supabase schema, auth, storage policies, and Pori integration docs must be documented before behavior depends on them.
 - Never touch: secrets, credentials, generated dependency folders, deployment config, or production-impacting settings without approval.
-- Current active work: initial monorepo scaffold.
+- Current active work: native `moshomo_ai` read-only workforce assistant (provider-agnostic LLM layer + RLS-scoped tools + auditable runs) at `POST /workforce/assistant`; premium web app; admin employee management + documents. Two migrations await approval.
 
 ## Project Shape
 

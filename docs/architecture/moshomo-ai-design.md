@@ -238,9 +238,31 @@ Initial tests should cover:
 - assistant refuses unauthorized questions
 - tool calls are recorded
 
+## Implemented First Slice
+
+The read-only first slice is implemented in `apps/api/src/moshomo_ai/`:
+
+- Provider-agnostic LLM layer (`llm/base.py` protocol + `anthropic`, `openai`, `google`
+  clients + `factory.py`), selected by config. Default `anthropic` / `claude-sonnet-4-6`;
+  per-environment via `MOSHOMO_AI_PROVIDER` / `MOSHOMO_AI_MODEL` and the matching API key.
+- A Pori-style Pydantic tool registry (`tools/registry.py`) with three read-only tools
+  (`tools/workforce.py`): `search_employees`, `get_employee_profile`, `get_company_knowledge`.
+  Tools read through the caller's Supabase token, so RLS — not the tool — enforces visibility.
+- A manual agentic loop (`agent.py`) capped by `MOSHOMO_AI_MAX_STEPS`, and a run entrypoint
+  (`runs.py`) that inserts one auditable `assistant_runs` row at completion.
+- Route `POST /workforce/assistant` (replaces the old `pori_adapter.py` placeholder).
+
+## Resolved Decisions
+
+- Route lives under `/workforce/assistant`.
+- `pori_adapter.py` was removed and replaced by `moshomo_ai`.
+- First knowledge search uses Postgres `ilike` (full-text / vector deferred).
+- Moshomo AI is provider-agnostic (anthropic / openai / google), like Pori.
+
 ## Open Decisions
 
-- Exact manager scope model.
-- Whether first knowledge search uses Postgres full-text search or vector search.
-- Whether Moshomo AI route lives under `/workforce/assistant` or `/ai/assistant`.
-- Whether we keep `pori_adapter.py` briefly or replace it immediately with `moshomo_ai`.
+- Exact manager scope model (currently direct-report RLS as built in the foundation).
+- Guarded write tools (leave/shift drafts) behind deterministic policy + HITL approval.
+- Streaming/background runs (need a service-role `assistant_runs` updater) and multi-turn
+  conversations (`conversation_id` threading).
+- Usage/trace persistence tables and per-company model/provider config.

@@ -14,6 +14,16 @@ class Settings(BaseSettings):
     supabase_jwks_cache_seconds: int = 3600
     supabase_http_timeout_seconds: float = 10.0
 
+    # Moshomo AI (provider-agnostic workforce assistant)
+    moshomo_ai_provider: str = "anthropic"
+    moshomo_ai_model: str = "claude-sonnet-4-6"
+    moshomo_ai_max_steps: int = 8
+    moshomo_ai_max_tokens: int = 4096
+    moshomo_ai_request_timeout_seconds: float = 60.0
+    anthropic_api_key: SecretStr | None = None
+    openai_api_key: SecretStr | None = None
+    google_api_key: SecretStr | None = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_prefix="MOSHOMO_",
