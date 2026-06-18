@@ -206,11 +206,24 @@ def test_refusal_is_recorded() -> None:
 
 
 def test_provider_not_configured_returns_503() -> None:
+    from moshomo_api.config import settings
+
     company_id = str(uuid4())
     rest = FakeRestClient(company_id)
-    # No get_llm_client override -> real factory runs; default settings have no key.
-    response = _run(_actor(company_id), rest, None, "anything")
-    assert response.status_code == 503
+    saved = (settings.anthropic_api_key, settings.openai_api_key, settings.google_api_key)
+    settings.anthropic_api_key = None
+    settings.openai_api_key = None
+    settings.google_api_key = None
+    try:
+        # No get_llm_client override -> real factory runs; no key -> 503.
+        response = _run(_actor(company_id), rest, None, "anything")
+        assert response.status_code == 503
+    finally:
+        (
+            settings.anthropic_api_key,
+            settings.openai_api_key,
+            settings.google_api_key,
+        ) = saved
 
 
 def test_registry_is_read_only() -> None:

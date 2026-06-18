@@ -4,6 +4,7 @@ import type { Session } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { AssistantPanel } from "@/components/assistant-panel";
 import { EmployeesPanel, type Account, type Employee, type Role } from "@/components/employees-panel";
 import { Icon } from "@/components/icon";
 import { appModulesFor, moduleForSection } from "@/lib/apps";
@@ -176,6 +177,8 @@ export default function WorkspacePage() {
     const activeModule = moduleForSection(section, role);
     if (!activeModule || activeModule.id === "dashboard") return homeFor(role);
     if (activeModule.status === "coming-soon") return <ComingSoon title={activeModule.roles[role]!.label} />;
+    if (activeModule.id === "assistant")
+      return <AssistantPanel companyId={membership!.company_id} role={role} session={session!} />;
     if (activeModule.id === "employees")
       return <EmployeesPanel accounts={accounts} canManage={role === "admin"} companyId={membership!.company_id} departments={departments} employees={employees} onChanged={loadWorkspace} onNotice={setNotice} session={session!} />;
     if (activeModule.id === "departments")

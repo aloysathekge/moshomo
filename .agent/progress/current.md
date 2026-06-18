@@ -86,7 +86,7 @@ The native Moshomo AI layer (read-only workforce assistant) is implemented: a pr
 - Employee documents remain unavailable until migration `20260617000400_employee_documents.sql` is approved and applied (table + private bucket). The web documents UI shows an "available once applied" notice until then.
 - Real Supabase invitation email delivery is not integration-tested; it requires backend-only secret-key and redirect configuration.
 - Moshomo AI has not been run against a live LLM yet — needs an API key (`MOSHOMO_ANTHROPIC_API_KEY` etc.) + applied Supabase data to integration-test `POST /workforce/assistant`. Cross-provider refusal detection is best-effort (only Anthropic exposes an explicit refusal stop reason).
-- Web/mobile "Ask Moshomo" UI is not wired to `POST /workforce/assistant` yet.
+- Web "Ask Moshomo" is wired to `POST /workforce/assistant` (`apps/web/src/components/assistant-panel.tsx`; the `assistant` app is now `status: "live"` in `apps/web/src/lib/apps.ts` and renders the chat panel via `app/page.tsx`). Mobile "Ask Moshomo" is still a placeholder. End-to-end answers still need a configured provider key + Supabase data.
 
 ## Next Session Should Start With
 

@@ -102,7 +102,7 @@ export const APP_MODULES: AppModule[] = [
     id: "assistant",
     section: "assistant",
     icon: "sparkles",
-    status: "coming-soon",
+    status: "live",
     group: "apps",
     roles: {
       admin: { label: "AI Assistant", order: 2 },

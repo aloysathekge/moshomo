@@ -1,5 +1,11 @@
+from pathlib import Path
+
 from pydantic import AnyHttpUrl, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Anchor the .env to apps/api/ so config loads regardless of the process CWD
+# (pnpm dev:api runs uvicorn from the repo root).
+_ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 
 
 class Settings(BaseSettings):
@@ -25,7 +31,7 @@ class Settings(BaseSettings):
     google_api_key: SecretStr | None = None
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_ENV_FILE,
         env_prefix="MOSHOMO_",
         extra="ignore",
     )
