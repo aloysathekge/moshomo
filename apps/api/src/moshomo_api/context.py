@@ -29,6 +29,14 @@ def require_company_admin(actor: "ActorContext", company_id: UUID) -> None:
         )
 
 
+def require_company_admin_or_manager(actor: "ActorContext", company_id: UUID) -> None:
+    if actor.company_id != company_id or actor.role not in ("admin", "manager"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Company admin or manager access is required",
+        )
+
+
 async def get_actor_context(
     active_company_id: UUID = Header(alias="X-Company-ID"),
     user: AuthenticatedUser = Depends(get_current_user),
