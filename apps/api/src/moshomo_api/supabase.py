@@ -33,7 +33,7 @@ class SupabaseRestClient:
         *,
         access_token: str,
         params: dict[str, str | int] | None = None,
-        json: dict[str, Any] | None = None,
+        json: dict[str, Any] | list[dict[str, Any]] | None = None,
         prefer: str | None = None,
     ) -> Any:
         base_url, publishable_key = self._configuration()
@@ -144,6 +144,29 @@ class SupabaseRestClient:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail="Supabase returned an unexpected update response",
+            )
+        return payload
+
+    async def upsert(
+        self,
+        table: str,
+        *,
+        access_token: str,
+        values: list[dict[str, Any]],
+        on_conflict: str,
+    ) -> list[dict[str, Any]]:
+        payload = await self._request(
+            "POST",
+            f"/{table}",
+            access_token=access_token,
+            params={"on_conflict": on_conflict},
+            json=values,
+            prefer="resolution=merge-duplicates,return=representation",
+        )
+        if not isinstance(payload, list):
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Supabase returned an unexpected upsert response",
             )
         return payload
 
