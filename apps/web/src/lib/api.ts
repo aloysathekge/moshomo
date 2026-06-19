@@ -2,7 +2,7 @@ import type { Session } from "@supabase/supabase-js";
 
 const apiUrl = process.env.NEXT_PUBLIC_MOSHOMO_API_URL ?? "http://localhost:8000";
 
-export async function moshomoApi<T>(path: string, options: { method?: "GET" | "POST" | "PATCH" | "DELETE"; session: Session; companyId?: string; body?: unknown }): Promise<T> {
+export async function moshomoApi<T>(path: string, options: { method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE"; session: Session; companyId?: string; body?: unknown }): Promise<T> {
   const headers = new Headers({ Authorization: `Bearer ${options.session.access_token}` });
   if (options.companyId) headers.set("X-Company-ID", options.companyId);
   if (options.body !== undefined) headers.set("Content-Type", "application/json");
