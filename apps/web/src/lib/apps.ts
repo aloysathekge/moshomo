@@ -78,7 +78,7 @@ export const APP_MODULES: AppModule[] = [
     id: "leave",
     section: "leave",
     icon: "leave",
-    status: "coming-soon",
+    status: "live",
     group: "apps",
     roles: {
       admin: { label: "Leave", order: 0 },
@@ -90,7 +90,7 @@ export const APP_MODULES: AppModule[] = [
     id: "shifts",
     section: "shifts",
     icon: "shifts",
-    status: "coming-soon",
+    status: "live",
     group: "apps",
     roles: {
       admin: { label: "Shifts", order: 1 },
