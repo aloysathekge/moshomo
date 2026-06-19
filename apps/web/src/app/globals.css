@@ -8,10 +8,10 @@
 
 :root {
   /* Surfaces */
-  --canvas: #eef1ec;
+  --canvas: #f5f6f7;
   --surface: #ffffff;
-  --surface-muted: #f6f8f5;
-  --surface-sunken: #f1f4ef;
+  --surface-muted: #f7f8f8;
+  --surface-sunken: #eef1f0;
 
   /* Ink */
   --ink: #16211b;
@@ -37,14 +37,14 @@
   /* Radii */
   --radius-sm: 12px;
   --radius-md: 16px;
-  --radius-lg: 20px;
-  --radius-xl: 26px;
+  --radius-lg: 18px;
+  --radius-xl: 20px;
 
   /* Layered shadows */
   --shadow-xs: 0 1px 2px rgba(16, 40, 28, 0.06);
   --shadow-sm: 0 1px 2px rgba(16, 40, 28, 0.05), 0 6px 16px -10px rgba(16, 40, 28, 0.18);
-  --shadow-md: 0 2px 4px rgba(16, 40, 28, 0.04), 0 18px 44px -28px rgba(16, 40, 28, 0.32);
-  --shadow-lg: 0 4px 10px rgba(16, 40, 28, 0.05), 0 30px 70px -34px rgba(16, 40, 28, 0.42);
+  --shadow-md: 0 1px 2px rgba(16, 40, 28, 0.04), 0 12px 32px -24px rgba(16, 40, 28, 0.28);
+  --shadow-lg: 0 4px 10px rgba(16, 40, 28, 0.05), 0 24px 56px -34px rgba(16, 40, 28, 0.38);
   --shadow-brand: 0 18px 40px -22px rgba(15, 114, 75, 0.55);
 
   --background: var(--canvas);
@@ -120,7 +120,8 @@ h3 {
 }
 
 :focus-visible {
-  outline: none;
+  outline: 2px solid var(--brand-500);
+  outline-offset: 3px;
 }
 
 /* ---------- Motion ---------- */
@@ -175,7 +176,7 @@ h3 {
   border: 1px solid var(--line);
   border-radius: var(--radius-xl);
   background: var(--surface);
-  padding: 26px;
+  padding: 24px;
   box-shadow: var(--shadow-md);
 }
 
@@ -190,11 +191,11 @@ h3 {
   position: relative;
   overflow: hidden;
   border: 1px solid var(--line-light);
-  border-radius: 28px;
+  border-radius: var(--radius-xl);
   background:
     radial-gradient(620px 320px at 88% -30%, rgba(111, 224, 168, 0.22), transparent 62%),
     linear-gradient(135deg, #123d2a 0%, #0c2a1d 56%, #16352b 100%);
-  padding: 34px;
+  padding: 28px;
   color: #fff;
   box-shadow: var(--shadow-lg);
 }
@@ -358,9 +359,9 @@ select.input {
   display: flex;
   align-items: center;
   gap: 12px;
-  border-radius: 14px;
-  padding: 10px 12px;
-  font-size: 14px;
+  border-radius: 10px;
+  padding: 9px 11px;
+  font-size: 13px;
   font-weight: 500;
   color: rgba(233, 248, 240, 0.74);
   transition: background-color 150ms ease, color 150ms ease, transform 150ms ease;
@@ -372,9 +373,70 @@ select.input {
 }
 
 .nav-link-active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  box-shadow: inset 3px 0 0 var(--brand-300);
+}
+
+/* ---------- Application chrome ---------- */
+.icon-button,
+.icon-button-dark {
+  position: relative;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 10px;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.icon-button {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-soft);
+}
+
+.icon-button:hover {
+  background: var(--surface-muted);
+  color: var(--ink);
+}
+
+.icon-button-dark {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.icon-button-dark:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.topbar-search {
+  align-items: center;
+  gap: 9px;
+  width: 240px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-muted);
+  padding: 0 9px 0 11px;
+  color: var(--ink-muted);
+  font-size: 12px;
+  text-align: left;
+}
+
+.topbar-search span {
+  flex: 1;
+}
+
+.topbar-search kbd {
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
   background: #fff;
-  color: var(--brand-800);
-  box-shadow: 0 10px 24px -14px rgba(0, 0, 0, 0.55);
+  padding: 1px 5px;
+  color: var(--ink-faint);
+  font-family: var(--font-sans);
+  font-size: 10px;
+  box-shadow: var(--shadow-xs);
 }
 
 /* ---------- Metric / stat tiles ---------- */
@@ -384,13 +446,13 @@ select.input {
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: var(--surface);
-  padding: 20px;
+  padding: 18px;
   box-shadow: var(--shadow-sm);
   transition: transform 180ms ease, box-shadow 180ms ease;
 }
 
 .metric-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
 

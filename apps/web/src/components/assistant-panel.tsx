@@ -92,6 +92,7 @@ export function AssistantPanel({
       </div>
 
       <div
+        aria-live="polite"
         className="premium-card flex-1 overflow-y-auto p-5"
         ref={listRef}
       >
@@ -131,6 +132,8 @@ export function AssistantPanel({
 
       <form className="mt-4 flex gap-3" onSubmit={submit}>
         <input
+          aria-label="Ask Moshomo"
+          autoComplete="off"
           className="input"
           disabled={sending}
           onChange={(event) => setInput(event.target.value)}

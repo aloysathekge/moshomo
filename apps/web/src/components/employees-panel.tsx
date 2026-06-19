@@ -70,6 +70,8 @@ export function EmployeesPanel({
   onNotice,
 }: Props) {
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | EmployeeStatus>("all");
+  const [departmentFilter, setDepartmentFilter] = useState("all");
   const [showInvite, setShowInvite] = useState(false);
   const [selectedId, setSelectedId] = useState<string>();
 
@@ -80,20 +82,16 @@ export function EmployeesPanel({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return employees;
-    return employees.filter((employee) =>
-      [
-        employee.first_name,
-        employee.last_name,
-        employee.email ?? "",
-        employee.employee_number,
-        employee.job_title ?? "",
-      ]
+    return employees.filter((employee) => {
+      if (statusFilter !== "all" && employee.status !== statusFilter) return false;
+      if (departmentFilter !== "all" && (employee.department_id ?? "unassigned") !== departmentFilter) return false;
+      if (!q) return true;
+      return [employee.first_name, employee.last_name, employee.email ?? "", employee.employee_number, employee.job_title ?? ""]
         .join(" ")
         .toLowerCase()
-        .includes(q),
-    );
-  }, [employees, query]);
+        .includes(q);
+    });
+  }, [departmentFilter, employees, query, statusFilter]);
 
   const selected = employees.find((employee) => employee.id === selectedId);
 
@@ -168,15 +166,17 @@ export function EmployeesPanel({
         </section>
       )}
 
-      <section className="premium-card p-0">
-        <div className="border-b border-[var(--line)] p-4">
-          <input
-            className="input"
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by name, email, number, or title"
-            value={query}
-          />
+      <section className="premium-card overflow-hidden p-0">
+        <div className="flex flex-col gap-3 border-b border-[var(--line)] p-4 lg:flex-row lg:items-center">
+          <div className="min-w-0 flex-1">
+            <input aria-label="Search employees" className="input" onChange={(event) => setQuery(event.target.value)} placeholder="Search name, email, number, or title" value={query} />
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:flex">
+            <select aria-label="Filter by status" className="input sm:w-40" onChange={(event) => setStatusFilter(event.target.value as "all" | EmployeeStatus)} value={statusFilter}><option value="all">All statuses</option><option value="active">Active</option><option value="suspended">Suspended</option><option value="terminated">Terminated</option><option value="resigned">Resigned</option></select>
+            <select aria-label="Filter by department" className="input sm:w-48" onChange={(event) => setDepartmentFilter(event.target.value)} value={departmentFilter}><option value="all">All departments</option><option value="unassigned">Unassigned</option>{departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</select>
+          </div>
         </div>
+        <div className="flex items-center justify-between border-b border-[var(--line)] bg-surface-muted px-5 py-2.5 text-xs text-ink-muted"><span>{filtered.length} result{filtered.length === 1 ? "" : "s"}</span>{(query || statusFilter !== "all" || departmentFilter !== "all") && <button className="font-semibold text-brand-700" onClick={() => { setQuery(""); setStatusFilter("all"); setDepartmentFilter("all"); }}>Clear filters</button>}</div>
         {filtered.length === 0 ? (
           <div className="empty-state m-4 px-5 py-12">
             <p className="text-sm font-semibold text-ink-soft">
@@ -285,6 +285,19 @@ function EmployeeModal({
 }) {
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [onClose]);
+
   async function saveDetails(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -355,8 +368,11 @@ function EmployeeModal({
 
   return (
     <div
+      aria-labelledby="employee-dialog-title"
+      aria-modal="true"
       className="fixed inset-0 z-50 grid place-items-end overflow-y-auto bg-black/40 p-0 backdrop-blur-sm sm:place-items-center sm:p-6"
       onClick={onClose}
+      role="dialog"
     >
       <div
         className="animate-rise max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl bg-surface p-6 shadow-2xl sm:rounded-3xl sm:p-8"
@@ -368,7 +384,7 @@ function EmployeeModal({
               {initials(employee)}
             </span>
             <div>
-              <h2 className="text-2xl font-semibold tracking-tight">
+              <h2 className="text-2xl font-semibold tracking-tight" id="employee-dialog-title">
                 {employee.first_name} {employee.last_name}
               </h2>
               <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink-muted">

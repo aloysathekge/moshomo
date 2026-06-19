@@ -1,4 +1,4 @@
-# Current State - 2026-06-17
+# Current State - 2026-06-19
 
 ## Active Task
 
@@ -55,7 +55,12 @@ The native Moshomo AI layer (read-only workforce assistant) is implemented: a pr
 - Web verification passed: `pnpm --filter @moshomo/web typecheck`, `lint`, and `build` (all 6 routes prerender static).
 - The `/app` admin experience was restructured from a full-screen onboarding gate into hash-driven sections (home, employees, departments, settings, plus coming-soon for leave/shifts/assistant). The placeholder "Workforce overview" activity feed and the dashboard logo card were removed.
 - Sections/apps are driven by a lightweight module registry at `apps/web/src/lib/apps.ts` (`APP_MODULES` with `group` + `status`, plus `navGroupsFor`/`moduleForSection`). Single source of truth for sidebar nav, `/app` section routing, per-role labels/visibility, grouping, and live-vs-coming-soon status. `app-shell.tsx` and `app/page.tsx` derive from it (no hardcoded nav map or section switch). Adding a future app (e.g. time tracking, invoicing) = one registry entry (group "apps") + one vertical slice. No plugin runtime/marketplace yet; per-company enable/disable is the deliberate future step.
-- To keep the sidebar clean and non-scrolling, the rail shows only core items (Dashboard, the "Workspace" group, and an "Account" group with Settings/Profile pinned at the bottom). The modular **apps** (group "apps": Leave, Shifts, AI Assistant, + future) are presented as a **tile grid on the dashboard** (`AppsGrid` in `app/page.tsx`, icon + name + live/coming-soon), reached from the home page of each role. The sidebar no longer lists apps or a launcher, and the Moshomo AI promo card was removed.
+- The enterprise UX pass uses a fixed desktop sidebar and accessible mobile drawer. All role-visible modules are labeled in grouped navigation; coming-soon modules are marked rather than hidden behind icon-only controls. The sticky top bar shows active context, search affordance, notifications, and account identity.
+- Admin and manager dashboards now prioritize metrics, team activity, setup status, and clear primary actions above decorative content. Employee home prioritizes next shift, leave balance, schedule, and assistant entry points.
+- Company creation no longer renders unusable workspace navigation before a company exists; it uses a focused three-step setup canvas.
+- Employee management now includes status and department filters, result counts, clear-filter behavior, and an accessible Escape-close dialog with body scroll locking.
+- Auth and invitation forms now provide correct autocomplete/password semantics, minimum password guidance, and alert roles. Assistant input and response history have accessible labels/live updates.
+- Web responsive QA found no horizontal overflow or browser console warnings on landing/auth. Production `lint`, `typecheck`, and `build` pass on Next.js 16.2.9.
 - SVG icon set extracted to `apps/web/src/components/icon.tsx` (shared by the shell and the dashboard apps grid). Registry helper `appModulesFor(role)` returns the group-"apps" modules.
 - In-page nav sets `window.location.hash` directly (anchors with onClick) instead of using `<Link href="/app#...">`, which was appending fragments (`#employees#shifts`). Active nav state + page section both sync via the `hashchange` event.
 - Added `suppressHydrationWarning` to `<body>` in `layout.tsx` to silence benign extension-injected attribute mismatches (e.g. ColorZilla `cz-shortcut-listen`).

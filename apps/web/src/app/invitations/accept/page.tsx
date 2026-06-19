@@ -113,6 +113,7 @@ export default function AcceptInvitationPage() {
           <label className="block text-sm font-medium text-ink-soft">
             Password
             <input
+              autoComplete="new-password"
               className="input mt-2"
               name="password"
               type="password"
@@ -121,7 +122,7 @@ export default function AcceptInvitationPage() {
             />
           </label>
           {message && (
-            <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700" role="alert">
               {message}
             </p>
           )}

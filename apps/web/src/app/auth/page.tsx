@@ -123,11 +123,12 @@ export default function AuthPage() {
           </p>
 
           <form className="mt-8 space-y-5" onSubmit={submit}>
-            {mode === "signup" && <Field label="Full name" name="fullName" />}
-            <Field label="Work email" name="email" type="email" />
-            <Field label="Password" name="password" type="password" />
+            {mode === "signup" && <Field autoComplete="name" label="Full name" name="fullName" />}
+            <Field autoComplete="email" label="Work email" name="email" type="email" />
+            <Field autoComplete={mode === "signup" ? "new-password" : "current-password"} label="Password" minLength={mode === "signup" ? 8 : undefined} name="password" type="password" />
+            {mode === "signup" && <p className="-mt-2 text-xs text-ink-faint">Use at least 8 characters.</p>}
             {message && (
-              <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="alert">
                 {message}
               </p>
             )}
@@ -142,7 +143,7 @@ export default function AuthPage() {
 
           <button
             className="mt-6 text-sm font-medium text-ink-muted transition hover:text-brand-700"
-            onClick={() => setMode(mode === "signup" ? "signin" : "signup")}
+            onClick={() => { setMode(mode === "signup" ? "signin" : "signup"); setMessage(undefined); }}
           >
             {mode === "signup"
               ? "Already have an account? Sign in"
@@ -158,15 +159,19 @@ function Field({
   label,
   name,
   type = "text",
+  autoComplete,
+  minLength,
 }: {
   label: string;
   name: string;
   type?: string;
+  autoComplete?: string;
+  minLength?: number;
 }) {
   return (
     <label className="block text-sm font-medium text-ink-soft">
       {label}
-      <input className="input mt-2" name={name} type={type} required />
+      <input autoComplete={autoComplete} className="input mt-2" minLength={minLength} name={name} type={type} required />
     </label>
   );
 }
