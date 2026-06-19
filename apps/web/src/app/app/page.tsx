@@ -4,8 +4,10 @@ import type { Session } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
-import { AssistantPanel } from "@/components/assistant-panel";
-import { EmployeesPanel, type Account, type Employee, type Role } from "@/components/employees-panel";
+import { AssistantPanel } from "@/modules/assistant/assistant-panel";
+import { EmployeesPanel, type Account, type Employee, type Role } from "@/modules/employees/employees-panel";
+import { LeavePanel } from "@/modules/leave/leave-panel";
+import { ShiftsPanel } from "@/modules/shifts/shifts-panel";
 import { Icon } from "@/components/icon";
 import { appModulesFor, moduleForSection } from "@/lib/apps";
 import { moshomoApi } from "@/lib/api";
@@ -16,6 +18,20 @@ type Company = { id: string; name: string; slug: string; logo_path: string | nul
 type Department = { id: string; company_id: string; name: string };
 type MembershipRow = { user_id: string; role: Role; status: string };
 type InvitationRow = { email: string; role: Role; status: string };
+type LeaveStats = { onLeaveToday: number; pendingApprovals: number; myPending: number; annualRemaining: number | null };
+type LeaveRow = { employee_id: string; start_date: string; end_date: string; status: string };
+type LeaveBalanceRow = { leave_type: string; remaining: number };
+type ShiftStats = { openShifts: number; myUpcoming: number };
+type ShiftRow = { status: string };
+
+const EMPTY_LEAVE_STATS: LeaveStats = { onLeaveToday: 0, pendingApprovals: 0, myPending: 0, annualRemaining: null };
+const EMPTY_SHIFT_STATS: ShiftStats = { openShifts: 0, myUpcoming: 0 };
+
+function localISO(offsetDays = 0): string {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 const EMPLOYEE_COLUMNS =
   "id,company_id,profile_id,department_id,manager_employee_id,employee_number,first_name,last_name,email,phone_number,job_title,employment_type,start_date,status";
@@ -29,6 +45,8 @@ export default function WorkspacePage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [accounts, setAccounts] = useState<Record<string, Account>>({});
   const [pendingInvites, setPendingInvites] = useState(0);
+  const [leaveStats, setLeaveStats] = useState<LeaveStats>(EMPTY_LEAVE_STATS);
+  const [shiftStats, setShiftStats] = useState<ShiftStats>(EMPTY_SHIFT_STATS);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<string>();
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -79,6 +97,38 @@ export default function WorkspacePage() {
       ((invitationRows ?? []) as InvitationRow[]).filter((row) => row.status === "pending" || row.status === "sent").length,
     );
     setLoading(false);
+
+    // Leave metrics — non-blocking and non-fatal (degrades to zeros if leave is unavailable).
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const [requests, balances] = await Promise.all([
+        moshomoApi<LeaveRow[]>("/workforce/leave/requests", { session: data.session, companyId: active.company_id }),
+        moshomoApi<{ employee_id: string | null; balances: LeaveBalanceRow[] }>("/workforce/leave/balances", { session: data.session, companyId: active.company_id }),
+      ]);
+      const myEid = balances.employee_id;
+      setLeaveStats({
+        onLeaveToday: requests.filter((r) => r.status === "approved" && r.start_date <= today && today <= r.end_date).length,
+        pendingApprovals: requests.filter((r) => r.status === "pending" && r.employee_id !== myEid).length,
+        myPending: requests.filter((r) => r.status === "pending" && r.employee_id === myEid).length,
+        annualRemaining: balances.balances.find((b) => b.leave_type === "annual")?.remaining ?? null,
+      });
+    } catch {
+      setLeaveStats(EMPTY_LEAVE_STATS);
+    }
+
+    // Shift metrics — non-blocking and non-fatal.
+    try {
+      const [openShifts, upcoming] = await Promise.all([
+        moshomoApi<ShiftRow[]>(`/workforce/shifts/assignments?open=true&from=${localISO(0)}&to=${localISO(14)}`, { session: data.session, companyId: active.company_id }),
+        moshomoApi<ShiftRow[]>(`/workforce/shifts/assignments?mine=true&from=${localISO(0)}&to=${localISO(7)}`, { session: data.session, companyId: active.company_id }),
+      ]);
+      setShiftStats({
+        openShifts: openShifts.filter((s) => s.status === "scheduled").length,
+        myUpcoming: upcoming.filter((s) => s.status === "scheduled").length,
+      });
+    } catch {
+      setShiftStats(EMPTY_SHIFT_STATS);
+    }
   }, [router]);
 
   useEffect(() => {
@@ -167,9 +217,9 @@ export default function WorkspacePage() {
   const shellProps = { companyName: company?.name, logoUrl, role: membership.role, userEmail: session.user.email };
 
   function homeFor(role: Role) {
-    if (role === "employee") return <EmployeeDashboard companyName={company?.name} />;
-    if (role === "manager") return <ManagerDashboard companyName={company?.name} employeeCount={employees.length} />;
-    return <AdminHome company={company} complete={setupComplete} departments={departments.length} employeeCount={employees.length} employees={employees} pendingInvites={pendingInvites} setup={setup} />;
+    if (role === "employee") return <EmployeeDashboard annualRemaining={leaveStats.annualRemaining} companyName={company?.name} pendingLeave={leaveStats.myPending} upcomingShifts={shiftStats.myUpcoming} />;
+    if (role === "manager") return <ManagerDashboard companyName={company?.name} employeeCount={employees.length} onLeaveToday={leaveStats.onLeaveToday} pendingApprovals={leaveStats.pendingApprovals} shiftGaps={shiftStats.openShifts} />;
+    return <AdminHome company={company} complete={setupComplete} departments={departments.length} employeeCount={employees.length} employees={employees} onLeaveToday={leaveStats.onLeaveToday} pendingInvites={pendingInvites} setup={setup} />;
   }
 
   function content() {
@@ -179,6 +229,10 @@ export default function WorkspacePage() {
     if (activeModule.status === "coming-soon") return <ComingSoon title={activeModule.roles[role]!.label} />;
     if (activeModule.id === "assistant")
       return <AssistantPanel companyId={membership!.company_id} role={role} session={session!} />;
+    if (activeModule.id === "leave")
+      return <LeavePanel companyId={membership!.company_id} employees={employees} role={role} session={session!} />;
+    if (activeModule.id === "shifts")
+      return <ShiftsPanel companyId={membership!.company_id} employees={employees} role={role} session={session!} />;
     if (activeModule.id === "employees")
       return <EmployeesPanel accounts={accounts} canManage={role === "admin"} companyId={membership!.company_id} departments={departments} employees={employees} onChanged={loadWorkspace} onNotice={setNotice} session={session!} />;
     if (activeModule.id === "departments")
@@ -204,7 +258,7 @@ function CreateCompany({ notice, onSubmit }: { notice?: string; onSubmit: (event
   return <AppShell role="admin"><section className="mx-auto max-w-3xl animate-rise"><p className="eyebrow">Step 1 of 3</p><h1 className="mt-2 text-4xl font-semibold tracking-tight">Create your company</h1><p className="mt-3 text-ink-muted">Set up your workspace. You will become its founding admin and first employee.</p><form className="premium-card mt-8 grid gap-5 sm:grid-cols-2" onSubmit={onSubmit}><Field label="Company name" name="company_name" /><Field label="Company slug" name="company_slug" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" /><Field label="Employee number" name="employee_number" /><Field label="Job title" name="job_title" required={false} /><Field label="First name" name="first_name" /><Field label="Last name" name="last_name" />{notice && <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 sm:col-span-2">{notice}</p>}<button className="primary-button sm:col-span-2">Create company</button></form></section></AppShell>;
 }
 
-function AdminHome({ company, complete, departments, employeeCount, employees, pendingInvites, setup }: { company?: Company; complete: boolean; departments: number; employeeCount: number; employees: Employee[]; pendingInvites: number; setup: SetupState }) {
+function AdminHome({ company, complete, departments, employeeCount, employees, onLeaveToday, pendingInvites, setup }: { company?: Company; complete: boolean; departments: number; employeeCount: number; employees: Employee[]; onLeaveToday: number; pendingInvites: number; setup: SetupState }) {
   return (
     <div className="mx-auto max-w-6xl animate-rise">
       <DashboardHeading eyebrow="Admin dashboard" title={`Good day${company?.name ? `, ${company.name}` : ""}`} subtitle="Here is what is happening across your workforce today." />
@@ -221,7 +275,7 @@ function AdminHome({ company, complete, departments, employeeCount, employees, p
         <MetricCard accent="emerald" detail="In your workforce" label="Employees" value={String(employeeCount)} />
         <MetricCard accent="blue" detail="Configured" label="Departments" value={String(departments)} />
         <MetricCard accent="violet" detail="Awaiting acceptance" label="Pending invites" value={String(pendingInvites)} />
-        <MetricCard accent="amber" detail="No absences recorded" label="On leave today" value="0" />
+        <MetricCard accent="amber" detail={onLeaveToday === 0 ? "No absences today" : "Approved & away"} label="On leave today" value={String(onLeaveToday)} />
       </div>
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.4fr_0.6fr]">
         <section className="premium-card">
@@ -253,12 +307,12 @@ function AdminHome({ company, complete, departments, employeeCount, employees, p
   );
 }
 
-function ManagerDashboard({ companyName, employeeCount }: { companyName?: string; employeeCount: number }) {
-  return <div className="mx-auto max-w-6xl animate-rise"><DashboardHeading eyebrow="Manager dashboard" title="Your team, at a glance" subtitle={`Plan today with a clear view of ${companyName ?? "your company"}.`} /><div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4"><MetricCard accent="emerald" label="Team members" value={String(employeeCount)} detail="In your workforce" /><MetricCard accent="amber" label="On leave" value="0" detail="Today" /><MetricCard accent="violet" label="Pending approvals" value="0" detail="No action needed" /><MetricCard accent="blue" label="Shift gaps" value="0" detail="Coverage looks good" /></div><div className="mt-6 grid gap-6 lg:grid-cols-2"><section className="premium-card"><SectionTitle title="Today’s team" action="View team" onAction={() => go("employees")} /><EmptyState title="Your team activity will appear here" detail="Employee status, leave, and shift coverage will populate as modules come online." /></section><section className="premium-card"><SectionTitle title="Requests awaiting review" action="View leave" onAction={() => go("leave")} /><EmptyState title="You are all caught up" detail="New employee leave requests will appear here for review." /></section></div><AppsGrid role="manager" /></div>;
+function ManagerDashboard({ companyName, employeeCount, onLeaveToday, pendingApprovals, shiftGaps }: { companyName?: string; employeeCount: number; onLeaveToday: number; pendingApprovals: number; shiftGaps: number }) {
+  return <div className="mx-auto max-w-6xl animate-rise"><DashboardHeading eyebrow="Manager dashboard" title="Your team, at a glance" subtitle={`Plan today with a clear view of ${companyName ?? "your company"}.`} /><div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4"><MetricCard accent="emerald" label="Team members" value={String(employeeCount)} detail="In your workforce" /><MetricCard accent="amber" label="On leave" value={String(onLeaveToday)} detail="Today" /><MetricCard accent="violet" label="Pending approvals" value={String(pendingApprovals)} detail={pendingApprovals === 0 ? "No action needed" : "Awaiting your review"} /><MetricCard accent="blue" label="Shift gaps" value={String(shiftGaps)} detail={shiftGaps === 0 ? "Coverage looks good" : "Open shifts to fill"} /></div><div className="mt-6 grid gap-6 lg:grid-cols-2"><section className="premium-card"><SectionTitle title="Today’s team" action="View team" onAction={() => go("employees")} /><EmptyState title="Your team activity will appear here" detail="Employee status, leave, and shift coverage will populate as modules come online." /></section><section className="premium-card"><SectionTitle title="Requests awaiting review" action="View leave" onAction={() => go("leave")} />{pendingApprovals === 0 ? <EmptyState title="You are all caught up" detail="New employee leave requests will appear here for review." /> : <button className="mt-5 flex w-full items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-left" onClick={() => go("leave")}><span><span className="text-sm font-semibold text-amber-900">{pendingApprovals} leave request{pendingApprovals === 1 ? "" : "s"} pending</span><span className="mt-0.5 block text-xs text-amber-800/80">Review and approve in Leave</span></span><span aria-hidden className="text-amber-700">→</span></button>}</section></div><AppsGrid role="manager" /></div>;
 }
 
-function EmployeeDashboard({ companyName }: { companyName?: string }) {
-  return <div className="mx-auto max-w-6xl animate-rise"><DashboardHeading eyebrow="My workspace" title="Good day" subtitle={`Everything you need at ${companyName ?? "work"}, in one place.`} /><section className="hero-panel"><div><span className="hero-pill">Your next shift</span><h2 className="mt-5 text-3xl font-semibold text-white">No upcoming shift yet</h2><p className="mt-3 text-sm text-emerald-100/75">Your schedule will appear here as soon as your manager publishes it.</p></div><button className="mt-7 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-[#174d35]" onClick={() => go("shifts")}>View my schedule</button></section><div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-4"><MetricCard accent="emerald" label="Leave balance" value="—" detail="Available days" /><MetricCard accent="blue" label="Upcoming shifts" value="0" detail="Next 7 days" /><MetricCard accent="amber" label="Leave requests" value="0" detail="Pending" /><MetricCard accent="violet" label="Notifications" value="0" detail="You are up to date" /></div><div className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.8fr]"><section className="premium-card"><SectionTitle title="My week" action="Open schedule" onAction={() => go("shifts")} /><EmptyState title="Your schedule is clear" detail="Published shifts and approved leave will appear on your weekly timeline." /></section><section className="relative overflow-hidden rounded-3xl border border-brand-100 bg-brand-50 p-6"><span aria-hidden className="pointer-events-none absolute -right-8 -top-8 size-32 rounded-full bg-brand-300/25 blur-2xl" /><p className="eyebrow">Moshomo AI</p><h2 className="mt-3 text-2xl font-semibold text-brand-800">Ask about your workday</h2><p className="mt-2 text-sm leading-6 text-brand-700/80">Try “When is my next shift?” or “How many leave days do I have?”</p><button className="dark-button mt-6 px-5 py-3 text-sm" onClick={() => go("assistant")}>Ask Moshomo</button></section></div><AppsGrid role="employee" /></div>;
+function EmployeeDashboard({ companyName, annualRemaining, pendingLeave, upcomingShifts }: { companyName?: string; annualRemaining: number | null; pendingLeave: number; upcomingShifts: number }) {
+  return <div className="mx-auto max-w-6xl animate-rise"><DashboardHeading eyebrow="My workspace" title="Good day" subtitle={`Everything you need at ${companyName ?? "work"}, in one place.`} /><section className="hero-panel"><div><span className="hero-pill">Your shifts</span><h2 className="mt-5 text-3xl font-semibold text-white">{upcomingShifts === 0 ? "No upcoming shift yet" : `${upcomingShifts} shift${upcomingShifts === 1 ? "" : "s"} this week`}</h2><p className="mt-3 text-sm text-emerald-100/75">{upcomingShifts === 0 ? "Your schedule will appear here as soon as your manager publishes it." : "View your schedule and set your availability."}</p></div><button className="mt-7 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-[#174d35]" onClick={() => go("shifts")}>View my schedule</button></section><div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-4"><MetricCard accent="emerald" label="Annual leave left" value={annualRemaining === null ? "—" : String(annualRemaining)} detail="Days remaining" /><MetricCard accent="blue" label="Upcoming shifts" value={String(upcomingShifts)} detail="Next 7 days" /><MetricCard accent="amber" label="Leave requests" value={String(pendingLeave)} detail="Pending" /><MetricCard accent="violet" label="Notifications" value="0" detail="You are up to date" /></div><div className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.8fr]"><section className="premium-card"><SectionTitle title="My week" action="Open schedule" onAction={() => go("shifts")} /><EmptyState title="Your schedule is clear" detail="Published shifts and approved leave will appear on your weekly timeline." /></section><section className="relative overflow-hidden rounded-3xl border border-brand-100 bg-brand-50 p-6"><span aria-hidden className="pointer-events-none absolute -right-8 -top-8 size-32 rounded-full bg-brand-300/25 blur-2xl" /><p className="eyebrow">Moshomo AI</p><h2 className="mt-3 text-2xl font-semibold text-brand-800">Ask about your workday</h2><p className="mt-2 text-sm leading-6 text-brand-700/80">Try “When is my next shift?” or “How many leave days do I have?”</p><button className="dark-button mt-6 px-5 py-3 text-sm" onClick={() => go("assistant")}>Ask Moshomo</button></section></div><AppsGrid role="employee" /></div>;
 }
 
 function DepartmentsView({ departments, employees, onCreate }: { departments: Department[]; employees: Employee[]; onCreate: (event: FormEvent<HTMLFormElement>) => void }) {

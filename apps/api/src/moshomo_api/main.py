@@ -6,7 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from moshomo_api.routers.health import router as health_router
 from moshomo_api.routers.employees import router as employees_router
+from moshomo_api.modules.shifts.router import router as shifts_router
 from moshomo_api.routers.employee_management import router as employee_management_router
+from moshomo_api.routers.leave import router as leave_router
 from moshomo_api.routers.onboarding import router as onboarding_router
 from moshomo_api.routers.workforce import router as workforce_router
 
@@ -28,6 +30,8 @@ app.include_router(health_router)
 app.include_router(workforce_router)
 app.include_router(employees_router)
 app.include_router(employee_management_router)
+app.include_router(leave_router)
+app.include_router(shifts_router)
 app.include_router(onboarding_router)
 
 
