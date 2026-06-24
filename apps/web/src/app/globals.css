@@ -1,37 +1,39 @@
 @import "tailwindcss";
 
 /*
-  Moshomo premium design system — refined emerald.
-  Network-free typography (system variable fonts), unified tokens,
-  layered shadows, and subtle motion.
+  Moshomo design system — monochrome + accent.
+  Neutral ink/paper base, near-black primary actions, a single emerald accent
+  used sparingly (focus, links, active nav, eyebrows). Status meaning is carried
+  by semantic colours (green/amber/red) via Tailwind utilities, never the accent.
+  Network-free typography (system variable fonts), layered shadows, subtle motion.
 */
 
 :root {
-  /* Surfaces */
-  --canvas: #f5f6f7;
+  /* Surfaces — neutral paper */
+  --canvas: #fafafa;
   --surface: #ffffff;
-  --surface-muted: #f7f8f8;
-  --surface-sunken: #eef1f0;
+  --surface-muted: #f4f4f5;
+  --surface-sunken: #ebebed;
 
-  /* Ink */
-  --ink: #16211b;
-  --ink-soft: #44544b;
-  --ink-muted: #6d7c73;
-  --ink-faint: #98a59c;
+  /* Ink — neutral zinc */
+  --ink: #18181b;
+  --ink-soft: #3f3f46;
+  --ink-muted: #71717a;
+  --ink-faint: #a1a1aa;
 
-  /* Brand greens */
-  --brand-900: #0c2a1d;
-  --brand-800: #103a28;
-  --brand-700: #15724b;
-  --brand-600: #176b48;
-  --brand-500: #1f9d66;
-  --brand-300: #6fe0a8;
-  --brand-100: #d6f4e3;
-  --brand-50: #e9f8f0;
+  /* Accent (emerald) — used sparingly, NOT for status */
+  --brand-900: #064e3b;
+  --brand-800: #065f46;
+  --brand-700: #047857;
+  --brand-600: #059669;
+  --brand-500: #10b981;
+  --brand-300: #6ee7b7;
+  --brand-100: #d1fae5;
+  --brand-50: #ecfdf5;
 
-  /* Hairlines */
-  --line: rgba(20, 50, 35, 0.1);
-  --line-strong: rgba(20, 50, 35, 0.16);
+  /* Hairlines — neutral */
+  --line: rgba(9, 9, 11, 0.08);
+  --line-strong: rgba(9, 9, 11, 0.14);
   --line-light: rgba(255, 255, 255, 0.1);
 
   /* Radii */
@@ -40,12 +42,12 @@
   --radius-lg: 18px;
   --radius-xl: 20px;
 
-  /* Layered shadows */
-  --shadow-xs: 0 1px 2px rgba(16, 40, 28, 0.06);
-  --shadow-sm: 0 1px 2px rgba(16, 40, 28, 0.05), 0 6px 16px -10px rgba(16, 40, 28, 0.18);
-  --shadow-md: 0 1px 2px rgba(16, 40, 28, 0.04), 0 12px 32px -24px rgba(16, 40, 28, 0.28);
-  --shadow-lg: 0 4px 10px rgba(16, 40, 28, 0.05), 0 24px 56px -34px rgba(16, 40, 28, 0.38);
-  --shadow-brand: 0 18px 40px -22px rgba(15, 114, 75, 0.55);
+  /* Layered shadows — neutral */
+  --shadow-xs: 0 1px 2px rgba(9, 9, 11, 0.06);
+  --shadow-sm: 0 1px 2px rgba(9, 9, 11, 0.05), 0 6px 16px -10px rgba(9, 9, 11, 0.16);
+  --shadow-md: 0 1px 2px rgba(9, 9, 11, 0.04), 0 12px 32px -24px rgba(9, 9, 11, 0.22);
+  --shadow-lg: 0 4px 10px rgba(9, 9, 11, 0.05), 0 24px 56px -34px rgba(9, 9, 11, 0.3);
+  --shadow-elevated: 0 18px 40px -22px rgba(9, 9, 11, 0.45);
 
   --background: var(--canvas);
   --foreground: var(--ink);
@@ -78,10 +80,6 @@
   --font-mono: "SFMono-Regular", "Cascadia Code", "JetBrains Mono", Consolas, monospace;
 }
 
-* {
-  border-color: var(--line);
-}
-
 html {
   -webkit-text-size-adjust: 100%;
 }
@@ -96,7 +94,8 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Subtle warm-green ambient backdrop so flat canvases never feel dead. */
+/* Subtle ambient mesh — a whisper of emerald + neutral depth so flat canvases
+   feel premium, never dead. Kept very low-opacity so it reads as light, not colour. */
 body::before {
   content: "";
   position: fixed;
@@ -104,8 +103,8 @@ body::before {
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(900px 520px at 12% -8%, rgba(31, 157, 102, 0.08), transparent 60%),
-    radial-gradient(820px 480px at 102% 4%, rgba(16, 58, 40, 0.06), transparent 55%);
+    radial-gradient(820px 480px at 6% -10%, rgba(9, 9, 11, 0.03), transparent 60%),
+    radial-gradient(760px 460px at 100% 2%, rgba(9, 9, 11, 0.025), transparent 55%);
 }
 
 h1,
@@ -115,12 +114,12 @@ h3 {
 }
 
 ::selection {
-  background: var(--brand-300);
+  background: var(--brand-100);
   color: var(--brand-900);
 }
 
 :focus-visible {
-  outline: 2px solid var(--brand-500);
+  outline: 2px solid var(--ink);
   outline-offset: 3px;
 }
 
@@ -160,6 +159,11 @@ h3 {
   }
 }
 
+/* ---------- Component classes ----------
+   Wrapped in @layer components so Tailwind utilities (a later layer) win — e.g.
+   `badge bg-emerald-100` overrides the neutral default to carry status colour. */
+@layer components {
+
 /* ---------- Type helpers ---------- */
 .eyebrow,
 .step-label {
@@ -170,10 +174,26 @@ h3 {
   text-transform: uppercase;
 }
 
+/* Premium gradient text — ink fading into the accent. Use on big headings or
+   metric numbers for a tasteful lift. */
+.text-gradient {
+  background: linear-gradient(120deg, var(--ink) 0%, var(--ink) 35%, var(--brand-600) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ---------- Sidebar surface ---------- */
+.app-sidebar {
+  background:
+    radial-gradient(440px 220px at 26% -6%, rgba(255, 255, 255, 0.06), transparent 62%),
+    linear-gradient(180deg, #131316 0%, #0a0a0b 52%, #060607 100%);
+}
+
 /* ---------- Surfaces ---------- */
 .premium-card {
   position: relative;
-  border: 1px solid var(--line);
   border-radius: var(--radius-xl);
   background: var(--surface);
   padding: 24px;
@@ -181,7 +201,6 @@ h3 {
 }
 
 .surface-card {
-  border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: var(--surface);
   box-shadow: var(--shadow-sm);
@@ -190,11 +209,10 @@ h3 {
 .hero-panel {
   position: relative;
   overflow: hidden;
-  border: 1px solid var(--line-light);
   border-radius: var(--radius-xl);
   background:
-    radial-gradient(620px 320px at 88% -30%, rgba(111, 224, 168, 0.22), transparent 62%),
-    linear-gradient(135deg, #123d2a 0%, #0c2a1d 56%, #16352b 100%);
+    radial-gradient(620px 320px at 88% -30%, rgba(255, 255, 255, 0.06), transparent 62%),
+    linear-gradient(135deg, #232327 0%, #09090b 58%, #18181b 100%);
   padding: 28px;
   color: #fff;
   box-shadow: var(--shadow-lg);
@@ -204,7 +222,7 @@ h3 {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 30%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 30%);
   pointer-events: none;
 }
 
@@ -212,9 +230,8 @@ h3 {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
   padding: 6px 13px;
   color: var(--brand-100);
   font-size: 12px;
@@ -223,18 +240,20 @@ h3 {
   backdrop-filter: blur(4px);
 }
 
-/* ---------- Badges & pills ---------- */
+/* ---------- Badges & pills ----------
+   Default badge/chip are NEUTRAL. Status colours are applied on top via Tailwind
+   utilities (e.g. `badge bg-amber-100 text-amber-700`), so meaning never relies
+   on the accent. */
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   border-radius: 999px;
-  background: var(--brand-50);
-  border: 1px solid var(--brand-100);
+  background: var(--surface-muted);
   padding: 5px 12px;
   font-size: 12px;
   font-weight: 600;
-  color: var(--brand-700);
+  color: var(--ink-soft);
   text-transform: capitalize;
 }
 
@@ -242,12 +261,17 @@ h3 {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  background: var(--brand-50);
-  border: 1px solid var(--brand-100);
+  background: var(--surface-muted);
   padding: 7px 14px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--brand-700);
+  color: var(--ink-soft);
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.chip:hover {
+  background: var(--surface-sunken);
+  color: var(--ink);
 }
 
 /* ---------- Inputs ---------- */
@@ -255,16 +279,14 @@ h3 {
 .field-input {
   width: 100%;
   min-width: 0;
-  border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   outline: none;
-  background: var(--surface);
+  background: var(--surface-muted);
   padding: 12px 14px;
   color: var(--ink);
   font-size: 14px;
   font-family: inherit;
-  box-shadow: var(--shadow-xs);
-  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+  transition: box-shadow 160ms ease, background-color 160ms ease;
 }
 
 .input::placeholder {
@@ -273,19 +295,20 @@ h3 {
 
 .input:focus,
 .field-input:focus {
-  border-color: var(--brand-500);
-  box-shadow: 0 0 0 4px var(--brand-100);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px rgba(9, 9, 11, 0.1);
 }
 
 select.input {
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236d7c73' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
   padding-right: 38px;
 }
 
-/* ---------- Buttons ---------- */
+/* ---------- Buttons ----------
+   Primary action is ink/near-black — the monochrome signature. */
 .primary-button,
 .secondary-button,
 .dark-button {
@@ -304,15 +327,14 @@ select.input {
 }
 
 .primary-button {
-  border: 1px solid var(--brand-700);
-  background: linear-gradient(180deg, #1c8055 0%, #156a45 100%);
+  background: linear-gradient(180deg, #27272a 0%, #18181b 100%);
   color: #fff;
-  box-shadow: var(--shadow-brand), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  box-shadow: var(--shadow-elevated), inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .primary-button:hover {
   transform: translateY(-1px);
-  box-shadow: 0 22px 46px -22px rgba(15, 114, 75, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  box-shadow: 0 22px 46px -22px rgba(9, 9, 11, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .primary-button:active {
@@ -320,29 +342,26 @@ select.input {
 }
 
 .secondary-button {
-  border: 1px solid var(--line-strong);
-  background: var(--surface);
+  background: var(--surface-muted);
   color: var(--ink-soft);
   box-shadow: var(--shadow-xs);
 }
 
 .secondary-button:hover {
   transform: translateY(-1px);
-  border-color: var(--brand-300);
-  background: var(--surface-muted);
+  background: var(--surface-sunken);
   color: var(--ink);
 }
 
 .dark-button {
-  border: 1px solid var(--brand-900);
-  background: var(--brand-900);
+  background: #09090b;
   color: #fff;
   box-shadow: var(--shadow-sm);
 }
 
 .dark-button:hover {
   transform: translateY(-1px);
-  background: var(--brand-800);
+  background: #18181b;
 }
 
 .primary-button:disabled,
@@ -363,19 +382,18 @@ select.input {
   padding: 9px 11px;
   font-size: 13px;
   font-weight: 500;
-  color: rgba(233, 248, 240, 0.74);
+  color: rgba(255, 255, 255, 0.66);
   transition: background-color 150ms ease, color 150ms ease, transform 150ms ease;
 }
 
 .nav-link:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.07);
   color: #fff;
 }
 
 .nav-link-active {
   background: rgba(255, 255, 255, 0.12);
   color: #fff;
-  box-shadow: inset 3px 0 0 var(--brand-300);
 }
 
 /* ---------- Application chrome ---------- */
@@ -391,13 +409,12 @@ select.input {
 }
 
 .icon-button {
-  border: 1px solid var(--line);
-  background: var(--surface);
+  background: var(--surface-muted);
   color: var(--ink-soft);
 }
 
 .icon-button:hover {
-  background: var(--surface-muted);
+  background: var(--surface-sunken);
   color: var(--ink);
 }
 
@@ -415,7 +432,6 @@ select.input {
   gap: 9px;
   width: 240px;
   height: 36px;
-  border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--surface-muted);
   padding: 0 9px 0 11px;
@@ -429,9 +445,8 @@ select.input {
 }
 
 .topbar-search kbd {
-  border: 1px solid var(--line-strong);
   border-radius: 5px;
-  background: #fff;
+  background: var(--surface);
   padding: 1px 5px;
   color: var(--ink-faint);
   font-family: var(--font-sans);
@@ -443,7 +458,6 @@ select.input {
 .metric-card {
   position: relative;
   overflow: hidden;
-  border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   background: var(--surface);
   padding: 18px;
@@ -458,13 +472,12 @@ select.input {
 
 /* ---------- Empty states ---------- */
 .empty-state {
-  border: 1px dashed var(--line-strong);
   border-radius: var(--radius-lg);
   background:
     repeating-linear-gradient(
       45deg,
-      rgba(20, 50, 35, 0.015),
-      rgba(20, 50, 35, 0.015) 10px,
+      rgba(9, 9, 11, 0.02),
+      rgba(9, 9, 11, 0.02) 10px,
       transparent 10px,
       transparent 20px
     ),
@@ -474,10 +487,9 @@ select.input {
 
 /* ---------- Notice ---------- */
 .notice {
-  border: 1px solid var(--brand-100);
   border-radius: var(--radius-md);
-  background: var(--brand-50);
-  color: var(--brand-900);
+  background: var(--surface-muted);
+  color: var(--ink-soft);
 }
 
 @media (max-width: 640px) {
@@ -491,3 +503,5 @@ select.input {
     padding: 24px;
   }
 }
+
+} /* end @layer components */

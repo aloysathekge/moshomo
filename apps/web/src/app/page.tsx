@@ -117,14 +117,14 @@ export default function Home() {
                 ].map((stat) => (
                   <div
                     key={stat.label}
-                    className="rounded-2xl border border-white/10 bg-white/[0.07] p-4"
+                    className="rounded-2xl bg-white/[0.07] p-4"
                   >
                     <p className="text-2xl font-semibold text-white">{stat.value}</p>
                     <p className="mt-1 text-xs text-emerald-100/70">{stat.label}</p>
                   </div>
                 ))}
               </div>
-              <div className="mt-5 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.07] p-4">
+              <div className="mt-5 flex items-center gap-3 rounded-2xl bg-white/[0.07] p-4">
                 <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-300/20 text-brand-300">
                   <FeatureIcon>
                     <path d="m12 3-1.5 4.5L6 9l4.5 1.5L12 15l1.5-4.5L18 9l-4.5-1.5L12 3Z" />
@@ -153,7 +153,7 @@ export default function Home() {
           </div>
         </section>
 
-        <footer className="flex flex-col items-center justify-between gap-3 border-t border-[var(--line)] pt-6 text-sm text-ink-muted sm:flex-row">
+        <footer className="flex flex-col items-center justify-between gap-3 pt-6 text-sm text-ink-muted sm:flex-row">
           <span>© {new Date().getFullYear()} Moshomo</span>
           <span>Employees · Leave · Smart shifts · Moshomo AI</span>
         </footer>

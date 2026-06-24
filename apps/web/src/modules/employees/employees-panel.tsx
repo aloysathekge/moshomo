@@ -46,10 +46,12 @@ type Props = {
   onNotice: (text: string) => void;
 };
 
+// Roles are a category, not a status — kept neutral so only status carries
+// colour (monochrome + accent + semantic-status). The label says the role.
 const roleStyles: Record<Role, string> = {
-  admin: "bg-violet-100 text-violet-700",
-  manager: "bg-blue-100 text-blue-700",
-  employee: "bg-brand-100 text-brand-700",
+  admin: "",
+  manager: "",
+  employee: "",
 };
 
 const statusStyles: Record<EmployeeStatus, string> = {
@@ -167,7 +169,7 @@ export function EmployeesPanel({
       )}
 
       <section className="premium-card overflow-hidden p-0">
-        <div className="flex flex-col gap-3 border-b border-[var(--line)] p-4 lg:flex-row lg:items-center">
+        <div className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center">
           <div className="min-w-0 flex-1">
             <input aria-label="Search employees" className="input" onChange={(event) => setQuery(event.target.value)} placeholder="Search name, email, number, or title" value={query} />
           </div>
@@ -176,7 +178,7 @@ export function EmployeesPanel({
             <select aria-label="Filter by department" className="input sm:w-48" onChange={(event) => setDepartmentFilter(event.target.value)} value={departmentFilter}><option value="all">All departments</option><option value="unassigned">Unassigned</option>{departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</select>
           </div>
         </div>
-        <div className="flex items-center justify-between border-b border-[var(--line)] bg-surface-muted px-5 py-2.5 text-xs text-ink-muted"><span>{filtered.length} result{filtered.length === 1 ? "" : "s"}</span>{(query || statusFilter !== "all" || departmentFilter !== "all") && <button className="font-semibold text-brand-700" onClick={() => { setQuery(""); setStatusFilter("all"); setDepartmentFilter("all"); }}>Clear filters</button>}</div>
+        <div className="flex items-center justify-between bg-surface-muted px-5 py-2.5 text-xs text-ink-muted"><span>{filtered.length} result{filtered.length === 1 ? "" : "s"}</span>{(query || statusFilter !== "all" || departmentFilter !== "all") && <button className="font-semibold text-ink-soft transition hover:text-ink" onClick={() => { setQuery(""); setStatusFilter("all"); setDepartmentFilter("all"); }}>Clear filters</button>}</div>
         {filtered.length === 0 ? (
           <div className="empty-state m-4 px-5 py-12">
             <p className="text-sm font-semibold text-ink-soft">
@@ -191,7 +193,7 @@ export function EmployeesPanel({
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-[var(--line)]">
+          <div>
             <div className="hidden grid-cols-[2fr_1.4fr_1fr_1fr_auto] gap-4 px-5 py-3 text-xs font-semibold uppercase tracking-wide text-ink-faint md:grid">
               <span>Name</span>
               <span>Department</span>
@@ -483,7 +485,7 @@ function EmployeeModal({
             />
 
             <Section title="Danger zone">
-              <button className="secondary-button border-rose-200 text-rose-700 hover:border-rose-300 hover:bg-rose-50" disabled={busy} onClick={remove}>
+              <button className="secondary-button text-rose-700 hover:bg-rose-50" disabled={busy} onClick={remove}>
                 Remove employee
               </button>
             </Section>
@@ -621,7 +623,7 @@ function DocumentsSection({
   return (
     <Section title="Documents">
       {unavailable ? (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
           Document storage becomes available once the employee-documents migration is applied.
         </p>
       ) : (
@@ -639,7 +641,7 @@ function DocumentsSection({
             <ul className="space-y-2">
               {documents.map((document) => (
                 <li
-                  className="flex items-center justify-between gap-3 rounded-xl border border-[var(--line)] bg-surface-muted px-4 py-3"
+                  className="flex items-center justify-between gap-3 rounded-xl bg-surface-muted px-4 py-3"
                   key={document.id}
                 >
                   <div className="min-w-0">
@@ -647,7 +649,7 @@ function DocumentsSection({
                     <p className="text-xs capitalize text-ink-muted">{document.doc_type}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <button className="text-sm font-semibold text-brand-700" onClick={() => view(document)}>
+                    <button className="text-sm font-semibold text-ink-soft transition hover:text-ink" onClick={() => view(document)}>
                       View
                     </button>
                     {!readOnly && (
@@ -708,7 +710,7 @@ function DocumentUpload({
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="mt-6 border-t border-[var(--line)] pt-6">
+    <section className="mt-6 pt-6">
       <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-ink-faint">{title}</h3>
       {children}
     </section>

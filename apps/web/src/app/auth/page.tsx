@@ -128,7 +128,7 @@ export default function AuthPage() {
             <Field autoComplete={mode === "signup" ? "new-password" : "current-password"} label="Password" minLength={mode === "signup" ? 8 : undefined} name="password" type="password" />
             {mode === "signup" && <p className="-mt-2 text-xs text-ink-faint">Use at least 8 characters.</p>}
             {message && (
-              <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="alert">
+              <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900" role="alert">
                 {message}
               </p>
             )}
@@ -142,7 +142,7 @@ export default function AuthPage() {
           </form>
 
           <button
-            className="mt-6 text-sm font-medium text-ink-muted transition hover:text-brand-700"
+            className="mt-6 text-sm font-medium text-ink-muted transition hover:text-ink"
             onClick={() => { setMode(mode === "signup" ? "signin" : "signup"); setMessage(undefined); }}
           >
             {mode === "signup"

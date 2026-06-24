@@ -223,7 +223,7 @@ function Bubble({
   if (turn.role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-2xl rounded-br-md bg-brand-900 px-4 py-2.5 text-sm text-white">
+        <div className="max-w-[85%] rounded-2xl rounded-br-md bg-ink px-4 py-2.5 text-sm text-white">
           {turn.text}
         </div>
       </div>
@@ -231,17 +231,17 @@ function Bubble({
   }
   const toneClass =
     turn.tone === "error"
-      ? "border-rose-200 bg-rose-50 text-rose-800"
+      ? "bg-rose-50 text-rose-800"
       : turn.tone === "refusal"
-        ? "border-amber-200 bg-amber-50 text-amber-900"
-        : "border-[var(--line)] bg-surface-muted text-ink";
+        ? "bg-amber-50 text-amber-900"
+        : "bg-surface-muted text-ink";
   return (
     <div className="flex justify-start">
-      <div className={`max-w-[85%] rounded-2xl rounded-bl-md border px-4 py-3 text-sm leading-6 ${toneClass}`}>
+      <div className={`max-w-[85%] rounded-2xl rounded-bl-md px-4 py-3 text-sm leading-6 ${toneClass}`}>
         <p className="whitespace-pre-wrap">{turn.text}</p>
         {turn.intent && <IntentCard turn={turn} onConfirm={onConfirm} onCancel={onCancel} />}
         {turn.citations && turn.citations.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5 border-t border-black/5 pt-3">
+          <div className="mt-3 flex flex-wrap gap-1.5 pt-3">
             {turn.citations.map((citation, index) => (
               <span className="badge" key={`${citation.table}-${citation.id}-${index}`}>
                 {citation.title ?? citation.table}
@@ -268,7 +268,7 @@ function IntentCard({
   const verb = intent.action === "approve" ? "Approve" : "Reject";
   const days = intent.days ?? 0;
   return (
-    <div className="mt-3 rounded-xl border border-brand-200 bg-brand-50 p-3 text-ink">
+    <div className="mt-3 rounded-xl bg-brand-50 p-3 text-ink">
       <p className="text-[0.7rem] font-semibold uppercase tracking-wide text-brand-700">
         {verb} leave · needs your confirmation
       </p>

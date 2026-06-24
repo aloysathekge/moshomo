@@ -127,9 +127,9 @@ export function ShiftsPanel({
         </p>
       )}
       {notice && (
-        <div className="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm font-medium text-brand-900">
+        <div className="mb-6 flex items-center justify-between gap-3 rounded-2xl bg-surface-muted px-4 py-3 text-sm font-medium text-ink-soft">
           <span>{notice}</span>
-          <button className="text-brand-700/70 hover:text-brand-700" onClick={() => setNotice(undefined)}>✕</button>
+          <button className="text-ink-muted hover:text-ink" onClick={() => setNotice(undefined)}>✕</button>
         </div>
       )}
 
@@ -155,14 +155,14 @@ export function ShiftsPanel({
 
             <div className="mt-5 grid gap-3">
               {weekDays.map((day) => (
-                <div className="rounded-2xl border border-[var(--line)] bg-surface-muted p-4" key={day}>
+                <div className="rounded-2xl bg-surface-muted p-4" key={day}>
                   <p className="text-sm font-semibold">{dayLabel(day)}</p>
                   {(shiftsByDay[day] ?? []).length === 0 ? (
                     <p className="mt-2 text-xs text-ink-faint">No shifts</p>
                   ) : (
                     <ul className="mt-3 space-y-2">
                       {(shiftsByDay[day] ?? []).map((s) => (
-                        <li className={`flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2 ${s.status === "cancelled" ? "border-stone-200 bg-stone-50 opacity-60" : s.employee_id ? "border-[var(--line)] bg-surface" : "border-amber-200 bg-amber-50"}`} key={s.id}>
+                        <li className={`flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-2 ${s.status === "cancelled" ? "bg-stone-50 opacity-60" : s.employee_id ? "bg-surface" : "bg-amber-50"}`} key={s.id}>
                           <div className="text-sm">
                             <span className="font-semibold">{s.template?.name ?? "Shift"}</span>
                             <span className="text-ink-muted"> · {hm(s.start_time)}–{hm(s.end_time)}</span>
@@ -204,7 +204,7 @@ export function ShiftsPanel({
             <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-ink-muted">Published shifts assigned to you will appear here.</p>
           </div>
         ) : (
-          <ul className="mt-5 divide-y divide-[var(--line)]">
+          <ul className="mt-5">
             {myShifts.map((s) => (
               <li className="flex items-center justify-between gap-3 py-3" key={s.id}>
                 <div>
@@ -254,7 +254,7 @@ function AddShiftForm({
     (event.target as HTMLFormElement).reset();
   }
   if (templates.length === 0) {
-    return <p className="mt-4 rounded-xl border border-[var(--line)] bg-surface-muted px-4 py-3 text-sm text-ink-muted">Create a shift template below before scheduling shifts.</p>;
+    return <p className="mt-4 rounded-xl bg-surface-muted px-4 py-3 text-sm text-ink-muted">Create a shift template below before scheduling shifts.</p>;
   }
   return (
     <form className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5" onSubmit={submit}>
@@ -297,7 +297,7 @@ function TemplatesSection({
       {templates.length > 0 && (
         <ul className="mt-5 flex flex-wrap gap-2">
           {templates.map((t) => (
-            <li className="flex items-center gap-2 rounded-full border border-[var(--line)] bg-surface-muted px-3 py-1.5 text-sm" key={t.id}>
+            <li className="flex items-center gap-2 rounded-full bg-surface-muted px-3 py-1.5 text-sm" key={t.id}>
               <span className="font-medium">{t.name}</span>
               <span className="text-ink-muted">{hm(t.start_time)}–{hm(t.end_time)}</span>
               <button aria-label={`Delete ${t.name}`} className="text-ink-faint hover:text-rose-600" disabled={busy} onClick={() => onDelete(t.id)}>✕</button>

@@ -60,14 +60,14 @@ export function AppShell({ children, companyName, logoUrl, role = "employee", us
         <CompanyLogo companyName={companyName} logoUrl={logoUrl} />
         <div className="min-w-0">
           <p className="truncate text-[15px] font-semibold text-white">{companyName ?? "Moshomo"}</p>
-          <p className="mt-0.5 text-xs capitalize text-emerald-200/60">{role} workspace</p>
+          <p className="mt-0.5 text-xs capitalize text-white/55">{role} workspace</p>
         </div>
       </a>
 
       <nav className="mt-8 flex-1 space-y-7 overflow-y-auto pr-1" aria-label="Workspace navigation">
         {groups.map((group) => (
           <div className="space-y-1" key={group.id}>
-            {group.label && <p className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-100/35">{group.label}</p>}
+            {group.label && <p className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">{group.label}</p>}
             {group.modules.map((module) => (
               <a
                 aria-current={isActive(module.section) ? "page" : undefined}
@@ -78,17 +78,17 @@ export function AppShell({ children, companyName, logoUrl, role = "employee", us
               >
                 <Icon name={module.icon} />
                 <span className="flex-1">{module.roles[role]!.label}</span>
-                {module.status === "coming-soon" && <span className="rounded-full bg-white/8 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-100/45">Soon</span>}
+                {module.status === "coming-soon" && <span className="rounded-full bg-white/8 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white/45">Soon</span>}
               </a>
             ))}
           </div>
         ))}
       </nav>
 
-      <div className="mt-5 border-t border-white/10 pt-4">
+      <div className="mt-5 pt-4">
         <div className="flex items-center gap-3 rounded-xl bg-white/[0.06] p-2.5 ring-1 ring-white/8">
-          <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-emerald-100 text-sm font-bold text-emerald-900">{role.slice(0, 1).toUpperCase()}</div>
-          <div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold text-white">{userEmail ?? companyName ?? "Account"}</p><p className="mt-0.5 text-[11px] capitalize text-emerald-100/50">{role}</p></div>
+          <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-white text-sm font-bold text-ink">{role.slice(0, 1).toUpperCase()}</div>
+          <div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold text-white">{userEmail ?? companyName ?? "Account"}</p><p className="mt-0.5 text-[11px] capitalize text-white/50">{role}</p></div>
           <button aria-label="Sign out" className="icon-button-dark" onClick={signOut} title="Sign out"><LogoutIcon /></button>
         </div>
       </div>
@@ -97,13 +97,13 @@ export function AppShell({ children, companyName, logoUrl, role = "employee", us
 
   return (
     <main className="min-h-screen bg-canvas text-ink md:pl-[276px]">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[276px] border-r border-white/5 bg-[#0c2a1d] px-4 py-5 text-white md:block">{sidebar}</aside>
+      <aside className="app-sidebar fixed inset-y-0 left-0 z-30 hidden w-[276px] px-4 py-5 text-white md:block">{sidebar}</aside>
 
-      {mobileOpen && <button aria-label="Close navigation" className="fixed inset-0 z-40 bg-[#081c14]/60 backdrop-blur-sm md:hidden" onClick={() => setMobileOpen(false)} />}
-      <aside aria-label="Mobile navigation" className={`fixed inset-y-0 left-0 z-50 w-[min(88vw,320px)] bg-[#0c2a1d] px-4 py-5 text-white shadow-2xl transition-transform duration-200 md:hidden ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>{sidebar}</aside>
+      {mobileOpen && <button aria-label="Close navigation" className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden" onClick={() => setMobileOpen(false)} />}
+      <aside aria-label="Mobile navigation" className={`app-sidebar fixed inset-y-0 left-0 z-50 w-[min(88vw,320px)] px-4 py-5 text-white shadow-2xl transition-transform duration-200 md:hidden ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>{sidebar}</aside>
 
       <section className="min-w-0">
-        <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-white/90 backdrop-blur-xl">
+        <header className="sticky top-0 z-20 bg-white/90 shadow-sm backdrop-blur-xl">
           <div className="flex h-[68px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
               <button aria-label="Open navigation" className="icon-button md:hidden" onClick={() => setMobileOpen(true)}><MenuIcon /></button>
@@ -125,7 +125,7 @@ export function AppShell({ children, companyName, logoUrl, role = "employee", us
 
 function CompanyLogo({ companyName, logoUrl }: { companyName?: string; logoUrl?: string }) {
   if (logoUrl) return <div aria-label={`${companyName ?? "Company"} logo`} className="size-10 shrink-0 rounded-xl bg-white bg-contain bg-center bg-no-repeat shadow-sm ring-1 ring-black/5" role="img" style={{ backgroundImage: `url("${logoUrl}")` }} />;
-  return <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-100 text-sm font-black text-emerald-900">{(companyName ?? "M").slice(0, 2).toUpperCase()}</div>;
+  return <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-sm font-black text-ink">{(companyName ?? "M").slice(0, 2).toUpperCase()}</div>;
 }
 
 function MenuIcon() { return <svg aria-hidden className="size-5" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" /></svg>; }

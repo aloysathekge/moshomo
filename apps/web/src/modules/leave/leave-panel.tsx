@@ -154,9 +154,9 @@ export function LeavePanel({
         </p>
       )}
       {notice && (
-        <div className="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm font-medium text-brand-900">
+        <div className="mb-6 flex items-center justify-between gap-3 rounded-2xl bg-surface-muted px-4 py-3 text-sm font-medium text-ink-soft">
           <span>{notice}</span>
-          <button className="text-brand-700/70 hover:text-brand-700" onClick={() => setNotice(undefined)}>✕</button>
+          <button className="text-ink-muted hover:text-ink" onClick={() => setNotice(undefined)}>✕</button>
         </div>
       )}
 
@@ -177,7 +177,7 @@ export function LeavePanel({
           ) : (
             <ul className="mt-5 space-y-3">
               {approvals.map((req) => (
-                <li className="rounded-2xl border border-[var(--line)] bg-surface-muted p-4" key={req.id}>
+                <li className="rounded-2xl bg-surface-muted p-4" key={req.id}>
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold">{(req.employee?.first_name ?? "") + " " + (req.employee?.last_name ?? "")}</p>
@@ -186,7 +186,7 @@ export function LeavePanel({
                     </div>
                     <div className="flex shrink-0 gap-2">
                       <button className="primary-button px-3 py-1.5 text-xs" disabled={busy} onClick={() => decide(req.id, "approve")}>Approve</button>
-                      <button className="secondary-button border-rose-200 px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-50" disabled={busy} onClick={() => decide(req.id, "reject")}>Reject</button>
+                      <button className="secondary-button px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-50" disabled={busy} onClick={() => decide(req.id, "reject")}>Reject</button>
                     </div>
                   </div>
                 </li>
@@ -204,7 +204,7 @@ export function LeavePanel({
             <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-ink-muted">Submit a request above and track its status here.</p>
           </div>
         ) : (
-          <ul className="mt-5 divide-y divide-[var(--line)]">
+          <ul className="mt-5">
             {myRequests.map((req) => (
               <li className="flex flex-wrap items-center justify-between gap-3 py-3" key={req.id}>
                 <div>
@@ -275,7 +275,7 @@ function BalanceCard({ balances }: { balances: Balance[] }) {
       <p className="mt-1 text-sm text-ink-muted">Allowance minus approved leave.</p>
       <ul className="mt-5 space-y-3">
         {balances.map((b) => (
-          <li className="rounded-2xl border border-[var(--line)] bg-surface-muted p-4" key={b.leave_type}>
+          <li className="rounded-2xl bg-surface-muted p-4" key={b.leave_type}>
             <div className="flex items-center justify-between">
               <span className="text-sm font-semibold">{typeLabel(b.leave_type)}</span>
               <span className="text-sm font-semibold tabular-nums text-brand-700">{b.remaining} left</span>
