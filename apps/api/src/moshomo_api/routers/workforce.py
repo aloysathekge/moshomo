@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -12,8 +12,15 @@ from moshomo_ai.runs import run_workforce_assistant
 router = APIRouter(prefix="/workforce", tags=["workforce"])
 
 
+class ConversationTurn(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=8000)
+
+
 class WorkforceQuestion(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
+    # Prior turns for conversation context, oldest first, excluding this question.
+    history: list[ConversationTurn] = Field(default_factory=list, max_length=20)
 
 
 @router.post("/assistant")
@@ -29,4 +36,5 @@ async def ask_workforce_assistant(
         rest=rest,
         client=client,
         request_source="api",
+        history=[turn.model_dump() for turn in payload.history],
     )

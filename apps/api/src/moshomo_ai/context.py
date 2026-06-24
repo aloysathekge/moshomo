@@ -19,6 +19,10 @@ class RunContext:
     rest: SupabaseRestClient
     request_source: str = "api"
     citations: list[dict[str, Any]] = field(default_factory=list)
+    # A single structured action the assistant has staged for the user to
+    # confirm. Tools never write; they stage an intent here and the human's
+    # explicit confirmation drives the actual write through the normal API.
+    proposed_intent: dict[str, Any] | None = None
 
     @property
     def access_token(self) -> str:
@@ -29,8 +33,16 @@ class RunContext:
         return str(self.actor.company_id)
 
     def cite(self, table: str, record_id: str, title: str | None = None) -> None:
-        entry: dict[str, Any] = {"table": table, "id": str(record_id)}
+        record_id = str(record_id)
+        # Dedupe by record identity (table + id), not the full entry — the same
+        # record cited with different titles must not appear twice.
+        if any(c["table"] == table and c["id"] == record_id for c in self.citations):
+            return
+        entry: dict[str, Any] = {"table": table, "id": record_id}
         if title:
             entry["title"] = title
-        if entry not in self.citations:
-            self.citations.append(entry)
+        self.citations.append(entry)
+
+    def propose(self, intent: dict[str, Any]) -> None:
+        """Stage an action for the user to confirm. One intent per run."""
+        self.proposed_intent = intent

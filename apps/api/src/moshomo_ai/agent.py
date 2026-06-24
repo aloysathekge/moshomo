@@ -30,8 +30,14 @@ async def run_agent(
     system: str,
     question: str,
     max_steps: int,
+    prior_messages: list[LLMMessage] | None = None,
 ) -> AgentResult:
-    history: list[LLMMessage] = [LLMMessage(role="user", text=question)]
+    # Prior turns (if any) give the model conversation context so follow-ups like
+    # "approve it" resolve against what was just discussed.
+    history: list[LLMMessage] = [
+        *(prior_messages or []),
+        LLMMessage(role="user", text=question),
+    ]
     specs = registry.specs()
     result = AgentResult(status="failed", answer=None)
 
