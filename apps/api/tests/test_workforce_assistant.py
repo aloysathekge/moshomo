@@ -135,6 +135,9 @@ def test_assistant_answers_with_tool_and_records_run() -> None:
     assert run_values["tool_calls"][0]["name"] == "search_employees"
     assert run_values["cited_records"]
     assert run_values["affected_records"] == []
+    # Which provider/model answered is persisted for auditability.
+    assert run_values["provider"] == "fake"
+    assert run_values["model"] == "fake-model"
 
 
 def test_tool_is_company_scoped_with_actor_token() -> None:

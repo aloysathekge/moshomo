@@ -4,7 +4,9 @@
 
 Moshomo V1 is an AI-native workforce operating system for employee management, leave management, smart shifts, and Moshomo AI-assisted workforce operations.
 
-Payroll, payslips, attendance tracking, clock-in/out, GPS tracking, recruitment, performance management, and benefits are out of scope for V1.
+Payroll, payslips, recruitment, performance management, and benefits are out of scope for V1.
+
+Time and attendance (clock-in/out via NFC/QR tag-in, geofence, company Wi-Fi, and selfie verification) is **planned as a post-V1 module** — see Phase 7. It is documented now so the data model and integrations are not re-derived later, but it is not built in V1.
 
 ## Current Repo State
 
@@ -163,6 +165,52 @@ Deliverables:
 - Backup and migration notes.
 - Basic usage analytics.
 - Onboarding flow for the first 5 companies.
+
+## Phase 7: Time & Attendance (Post-V1)
+
+Goal: let employees tag in/out at a workplace entrance through the Moshomo mobile app, with trustworthy proof of physical presence, feeding actual hours into shifts and (future) payroll.
+
+Not in V1. Built as a fully-modular app on the existing employee spine, following the Smart Shifts pattern: API in `apps/api/src/moshomo_api/modules/attendance/`, web in `apps/web/src/modules/attendance/`, and the primary tag-in surface in `apps/mobile`.
+
+Tag-in concept:
+
+- A single physical **NFC + QR combo tag** at each entrance, encoding the same clock-point payload. NFC for tap-friendly phones, QR as the universal fallback (covers every device). Read by the **native Moshomo mobile app** (Expo), not a browser — so iOS NFC works via Core NFC, removing the Web NFC / Android-only limitation.
+- "Programming a tag" = writing an employee/clock-point credential to an NFC card or reading its built-in UID, storing only a **hash** server-side.
+
+Presence verification (three independent factors — a tag proves *which door*, not *that you are there*):
+
+- **Geofence (GPS)** — within range of the clock point. Weak alone (spoofable), strong as a signal.
+- **Company Wi-Fi** — match the access point **BSSID** (hardware MAC), not the SSID name (an SSID is trivially cloned by a rogue hotspot). On iOS this needs the `com.apple.developer.networking.wifi-info` entitlement plus location permission.
+- **Selfie** — proves *who*; defeats buddy-punching. Tiered: store for manager review, or face-match against an enrolled photo with **liveness detection** (stops holding up a printed photo).
+- **Enforcement is tiered, not all-or-nothing:** Wi-Fi BSSID + geofence are the hard gate; the selfie is captured and *mismatches flagged for review* rather than locking a good employee out over a dark hallway or bad camera.
+
+Deliverables:
+
+- `clock_credentials` (employee/clock-point tag, hashed token, type nfc|qr|pin, active).
+- `clock_points` (company entrance/location, geofence centre + radius, allowed Wi-Fi BSSIDs).
+- `time_punches` (append-only event log: punch_type in|lunch_start|lunch_end|out, punched_at, source, clock_point_id, lat/lng, verification result).
+- `work_sessions` (derived: pair in→out, subtract lunch, compute hours).
+- Server-side **state machine** for the punch sequence (out → in → lunch_start → lunch_end → out), same "API enforces transitions, RLS enforces row scope" pattern as Leave/Shifts.
+- Mobile tag-in screen (NFC + QR + geofence + Wi-Fi + selfie), with **offline queue and sync** for flaky entrance connectivity.
+- Web manager attendance views: who is clocked in now, late/no-show, timesheet review, flagged selfies.
+
+Integrations (the payoff — this is the richest cross-module connector):
+
+- **Shifts:** compare actual punch-in against the scheduled shift → automatic late / no-show / early-leave / overtime detection.
+- **Leave:** punching in while on approved leave is flagged (via the shared availability check).
+- **Payroll (future):** `work_sessions` become the authoritative hours source.
+
+Moshomo AI involvement:
+
+- Read-only tools: `who_is_clocked_in_now`, `who_is_late_today`, `hours_this_week`, registered into the workforce tool registry so the assistant reasons across attendance + shifts + leave.
+
+Build constraints:
+
+- NFC requires a custom Expo dev/EAS build (`react-native-nfc-manager` + config plugin) — not Expo Go. iOS NFC scanning is foreground and user-initiated (Apple's system scan sheet); needs the NFC entitlement and a paid Apple Developer account.
+
+Compliance:
+
+- The selfie/face data is **biometric "special personal information" under POPIA**. Requires explicit consent at enrolment, a defined retention policy, and secure storage. Design in from the start — expensive to retrofit.
 
 ## First Vertical Slice
 

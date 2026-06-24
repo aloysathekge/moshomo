@@ -1,11 +1,20 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 import httpx
 from fastapi import HTTPException, status
 
 from moshomo_api.config import Settings, settings
+
+# Upstream statuses worth retrying: transient gateway/availability errors from a
+# cold or briefly unreachable Supabase edge, not client/auth/conflict errors.
+_RETRYABLE_UPSTREAM_STATUSES = {
+    status.HTTP_502_BAD_GATEWAY,
+    status.HTTP_503_SERVICE_UNAVAILABLE,
+    status.HTTP_504_GATEWAY_TIMEOUT,
+}
 
 
 class SupabaseRestClient:
@@ -44,43 +53,78 @@ class SupabaseRestClient:
         }
         if prefer is not None:
             headers["Prefer"] = prefer
-        try:
-            async with httpx.AsyncClient(
-                base_url=f"{base_url}/rest/v1",
-                headers=headers,
-                timeout=self._settings.supabase_http_timeout_seconds,
-            ) as client:
-                response = await client.request(
-                    method,
-                    path,
-                    params=params,
-                    json=json,
-                )
-                response.raise_for_status()
-                payload = response.json() if response.content else None
-        except httpx.HTTPStatusError as error:
-            upstream_status = error.response.status_code
-            if upstream_status in {status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN}:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Supabase denied access to the requested records",
-                ) from error
-            if upstream_status == status.HTTP_409_CONFLICT:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="The requested record conflicts with existing data",
-                ) from error
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail="Supabase data request failed",
-            ) from error
-        except (httpx.HTTPError, ValueError) as error:
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail="Supabase data service is unavailable",
-            ) from error
 
-        return payload
+        # Only GET is safe to retry blindly; retrying a POST/PATCH/DELETE whose
+        # response was lost could duplicate or re-apply a write.
+        is_retryable_method = method.upper() == "GET"
+        max_attempts = (
+            self._settings.supabase_max_retries + 1 if is_retryable_method else 1
+        )
+
+        last_transient_error: Exception | None = None
+        for attempt in range(max_attempts):
+            try:
+                async with httpx.AsyncClient(
+                    base_url=f"{base_url}/rest/v1",
+                    headers=headers,
+                    timeout=self._settings.supabase_http_timeout_seconds,
+                ) as client:
+                    response = await client.request(
+                        method,
+                        path,
+                        params=params,
+                        json=json,
+                    )
+                    response.raise_for_status()
+                    return response.json() if response.content else None
+            except httpx.HTTPStatusError as error:
+                upstream_status = error.response.status_code
+                if upstream_status in {
+                    status.HTTP_401_UNAUTHORIZED,
+                    status.HTTP_403_FORBIDDEN,
+                }:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Supabase denied access to the requested records",
+                    ) from error
+                if upstream_status == status.HTTP_409_CONFLICT:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="The requested record conflicts with existing data",
+                    ) from error
+                if (
+                    upstream_status in _RETRYABLE_UPSTREAM_STATUSES
+                    and attempt < max_attempts - 1
+                ):
+                    last_transient_error = error
+                    await self._backoff(attempt)
+                    continue
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Supabase data request failed",
+                ) from error
+            except (httpx.HTTPError, ValueError) as error:
+                # Transport-level failures (connect/read timeouts, resets) are
+                # the classic cold-connection symptom — retry idempotent reads.
+                if attempt < max_attempts - 1:
+                    last_transient_error = error
+                    await self._backoff(attempt)
+                    continue
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Supabase data service is unavailable",
+                ) from last_transient_error or error
+
+        # Unreachable: the loop either returns or raises on the final attempt.
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Supabase data service is unavailable",
+        ) from last_transient_error
+
+    async def _backoff(self, attempt: int) -> None:
+        await asyncio.sleep(
+            self._settings.supabase_retry_backoff_seconds * (2 ** attempt)
+        )
 
     async def select(
         self,

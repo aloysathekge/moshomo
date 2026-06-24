@@ -39,6 +39,8 @@ async def run_workforce_assistant(
             "actor_user_id": str(actor.user_id),
             "request_source": request_source,
             "status": result.status,
+            "provider": client.provider,
+            "model": client.model,
             "input": question,
             "tool_calls": result.tool_calls,
             "cited_records": context.citations,

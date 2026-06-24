@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     supabase_jwt_audience: str = "authenticated"
     supabase_jwks_cache_seconds: int = 3600
     supabase_http_timeout_seconds: float = 10.0
+    # Transient Supabase REST failures (cold connections can 502/time out on the
+    # first hit) are retried for idempotent GETs with exponential backoff.
+    supabase_max_retries: int = 2
+    supabase_retry_backoff_seconds: float = 0.4
 
     # Moshomo AI (provider-agnostic workforce assistant)
     moshomo_ai_provider: str = "anthropic"
