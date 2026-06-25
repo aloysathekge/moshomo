@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Literal
 from uuid import UUID
 
@@ -16,6 +16,42 @@ LeaveType = Literal["annual", "sick", "family_responsibility", "unpaid"]
 DayPart = Literal["full", "morning", "afternoon"]
 LeaveStatus = Literal["pending", "approved", "rejected", "cancelled"]
 LEAVE_TYPES: tuple[LeaveType, ...] = ("annual", "sick", "family_responsibility", "unpaid")
+# Unpaid leave has no allowance ceiling; the rest are balance-tracked.
+BALANCE_TRACKED: tuple[LeaveType, ...] = ("annual", "sick", "family_responsibility")
+# Requests that still consume balance (approved is committed, pending is reserved).
+COMMITTING_STATUSES = "(approved,pending)"
+
+# South African public holidays (observed dates) for the per-company import action.
+SA_HOLIDAYS: dict[int, list[tuple[str, str]]] = {
+    2026: [
+        ("2026-01-01", "New Year's Day"),
+        ("2026-03-21", "Human Rights Day"),
+        ("2026-04-03", "Good Friday"),
+        ("2026-04-06", "Family Day"),
+        ("2026-04-27", "Freedom Day"),
+        ("2026-05-01", "Workers' Day"),
+        ("2026-06-16", "Youth Day"),
+        ("2026-08-10", "National Women's Day (observed)"),
+        ("2026-09-24", "Heritage Day"),
+        ("2026-12-16", "Day of Reconciliation"),
+        ("2026-12-25", "Christmas Day"),
+        ("2026-12-26", "Day of Goodwill"),
+    ],
+    2027: [
+        ("2027-01-01", "New Year's Day"),
+        ("2027-03-22", "Human Rights Day (observed)"),
+        ("2027-03-26", "Good Friday"),
+        ("2027-03-29", "Family Day"),
+        ("2027-04-27", "Freedom Day"),
+        ("2027-05-01", "Workers' Day"),
+        ("2027-06-16", "Youth Day"),
+        ("2027-08-09", "National Women's Day"),
+        ("2027-09-24", "Heritage Day"),
+        ("2027-12-16", "Day of Reconciliation"),
+        ("2027-12-25", "Christmas Day"),
+        ("2027-12-27", "Day of Goodwill (observed)"),
+    ],
+}
 
 LEAVE_SELECT = (
     "id,company_id,employee_id,leave_type,start_date,end_date,day_part,days,reason,"
@@ -24,10 +60,86 @@ LEAVE_SELECT = (
 )
 
 
-def _compute_days(start: date, end: date, day_part: DayPart) -> float:
+def _working_days(start: date, end: date, day_part: DayPart, holidays: set[date]) -> float:
+    """Count working days in [start, end], excluding weekends and holidays.
+    A half day is always 0.5 (it only applies to a single day)."""
     if day_part != "full":
         return 0.5
-    return float((end - start).days + 1)
+    total = 0
+    current = start
+    while current <= end:
+        if current.weekday() < 5 and current not in holidays:
+            total += 1
+        current += timedelta(days=1)
+    return float(total)
+
+
+async def _holidays_in_range(
+    client: SupabaseRestClient, actor: ActorContext, start: date, end: date
+) -> set[date]:
+    """Company holidays within a date range. Degrades to an empty set if the
+    company_holidays table is not yet available (migration not applied)."""
+    try:
+        rows = await client.select(
+            "company_holidays",
+            access_token=actor.access_token,
+            params={
+                "select": "holiday_date",
+                "company_id": f"eq.{actor.company_id}",
+                "and": f"(holiday_date.gte.{start.isoformat()},holiday_date.lte.{end.isoformat()})",
+            },
+        )
+    except Exception:
+        return set()
+    result: set[date] = set()
+    for row in rows:
+        try:
+            result.add(date.fromisoformat(row["holiday_date"]))
+        except (KeyError, ValueError):
+            continue
+    return result
+
+
+async def _committed_days(
+    client: SupabaseRestClient,
+    actor: ActorContext,
+    *,
+    employee_id: str,
+    leave_type: LeaveType,
+    statuses: str,
+    exclude_request_id: str | None = None,
+) -> float:
+    """Sum of leave days for an employee+type across the given statuses."""
+    params: dict[str, str | int] = {
+        "select": "days",
+        "company_id": f"eq.{actor.company_id}",
+        "employee_id": f"eq.{employee_id}",
+        "leave_type": f"eq.{leave_type}",
+        "status": f"in.{statuses}",
+    }
+    if exclude_request_id is not None:
+        params["id"] = f"neq.{exclude_request_id}"
+    rows = await client.select("leave_requests", access_token=actor.access_token, params=params)
+    return sum(float(row["days"]) for row in rows)
+
+
+async def _allotted_for(
+    client: SupabaseRestClient, actor: ActorContext, *, employee_id: str, leave_type: LeaveType
+) -> float | None:
+    """Allotted days for an employee+type, or None when no allowance is
+    configured (untracked — no ceiling enforced)."""
+    rows = await client.select(
+        "leave_allowances",
+        access_token=actor.access_token,
+        params={
+            "select": "allotted_days",
+            "company_id": f"eq.{actor.company_id}",
+            "employee_id": f"eq.{employee_id}",
+            "leave_type": f"eq.{leave_type}",
+            "limit": 1,
+        },
+    )
+    return float(rows[0]["allotted_days"]) if rows else None
 
 
 class EmployeeBrief(BaseModel):
@@ -101,17 +213,76 @@ async def create_leave_request(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="The current user has no employee record in this company",
         )
+    employee_id = str(actor.employee_id)
+
+    if payload.start_date < date.today():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Leave cannot start in the past",
+        )
+
+    holidays = await _holidays_in_range(client, actor, payload.start_date, payload.end_date)
+    days = _working_days(payload.start_date, payload.end_date, payload.day_part, holidays)
+    if days <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="The selected dates contain no working days (weekends and holidays are excluded)",
+        )
+
+    # Reject requests overlapping an existing pending/approved request.
+    overlapping = await client.select(
+        "leave_requests",
+        access_token=actor.access_token,
+        params={
+            "select": "id",
+            "company_id": f"eq.{actor.company_id}",
+            "employee_id": f"eq.{employee_id}",
+            "status": f"in.{COMMITTING_STATUSES}",
+            "start_date": f"lte.{payload.end_date.isoformat()}",
+            "end_date": f"gte.{payload.start_date.isoformat()}",
+            "limit": 1,
+        },
+    )
+    if overlapping:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This overlaps a leave request you already have for those dates",
+        )
+
+    # Enforce balance for tracked types that have an allowance configured.
+    if payload.leave_type in BALANCE_TRACKED:
+        allotted = await _allotted_for(
+            client, actor, employee_id=employee_id, leave_type=payload.leave_type
+        )
+        if allotted is not None:
+            committed = await _committed_days(
+                client,
+                actor,
+                employee_id=employee_id,
+                leave_type=payload.leave_type,
+                statuses=COMMITTING_STATUSES,
+            )
+            available = allotted - committed
+            if days > available:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=(
+                        f"Not enough {payload.leave_type.replace('_', ' ')} balance: "
+                        f"{available:g} day(s) available, {days:g} requested"
+                    ),
+                )
+
     created = await client.insert(
         "leave_requests",
         access_token=actor.access_token,
         values={
             "company_id": str(actor.company_id),
-            "employee_id": str(actor.employee_id),
+            "employee_id": employee_id,
             "leave_type": payload.leave_type,
             "start_date": payload.start_date.isoformat(),
             "end_date": payload.end_date.isoformat(),
             "day_part": payload.day_part,
-            "days": _compute_days(payload.start_date, payload.end_date, payload.day_part),
+            "days": days,
             "reason": payload.reason,
             "status": "pending",
         },
@@ -155,7 +326,7 @@ async def decide_leave_request(
         "leave_requests",
         access_token=actor.access_token,
         params={
-            "select": "id,employee_id,status,employee:employees(manager_employee_id)",
+            "select": "id,employee_id,leave_type,days,status,employee:employees(manager_employee_id)",
             "id": f"eq.{request_id}",
             "company_id": f"eq.{actor.company_id}",
             "limit": 1,
@@ -191,6 +362,34 @@ async def decide_leave_request(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only an admin or the employee's manager can decide this request",
             )
+
+        # Re-check balance at approval — other requests may have been approved
+        # since this one was created.
+        if payload.action == "approve" and request["leave_type"] in BALANCE_TRACKED:
+            allotted = await _allotted_for(
+                client,
+                actor,
+                employee_id=str(request["employee_id"]),
+                leave_type=request["leave_type"],
+            )
+            if allotted is not None:
+                already_approved = await _committed_days(
+                    client,
+                    actor,
+                    employee_id=str(request["employee_id"]),
+                    leave_type=request["leave_type"],
+                    statuses="(approved)",
+                    exclude_request_id=str(request_id),
+                )
+                if already_approved + float(request["days"]) > allotted:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=(
+                            f"Approving this exceeds the {request['leave_type'].replace('_', ' ')} "
+                            f"allowance ({allotted:g} day(s)); {already_approved:g} already approved"
+                        ),
+                    )
+
         values = {
             "status": "approved" if payload.action == "approve" else "rejected",
             "decided_by": str(actor.user_id),
@@ -239,32 +438,39 @@ async def leave_balances(
             "employee_id": f"eq.{target}",
         },
     )
-    approved = await client.select(
+    committed = await client.select(
         "leave_requests",
         access_token=actor.access_token,
         params={
-            "select": "leave_type,days",
+            "select": "leave_type,days,status",
             "company_id": f"eq.{actor.company_id}",
             "employee_id": f"eq.{target}",
-            "status": "eq.approved",
+            "status": f"in.{COMMITTING_STATUSES}",
         },
     )
 
     allotted_by_type = {row["leave_type"]: float(row["allotted_days"]) for row in allowances}
     used_by_type: dict[str, float] = {}
-    for row in approved:
-        used_by_type[row["leave_type"]] = used_by_type.get(row["leave_type"], 0.0) + float(row["days"])
+    pending_by_type: dict[str, float] = {}
+    for row in committed:
+        bucket = used_by_type if row["status"] == "approved" else pending_by_type
+        bucket[row["leave_type"]] = bucket.get(row["leave_type"], 0.0) + float(row["days"])
 
     balances = []
     for leave_type in LEAVE_TYPES:
         allotted = allotted_by_type.get(leave_type, 0.0)
         used = used_by_type.get(leave_type, 0.0)
+        pending = pending_by_type.get(leave_type, 0.0)
+        available = allotted - used - pending
         balances.append(
             {
                 "leave_type": leave_type,
                 "allotted": allotted,
                 "used": round(used, 1),
-                "remaining": round(allotted - used, 1),
+                "pending": round(pending, 1),
+                "available": round(available, 1),
+                # Backwards-compatible: remaining now reflects bookable balance.
+                "remaining": round(available, 1),
             }
         )
     return {"employee_id": target, "balances": balances}
@@ -296,3 +502,98 @@ async def set_leave_allowances(
         on_conflict="company_id,employee_id,leave_type",
     )
     return {"allowances": rows}
+
+
+# ---------- Company holidays ----------
+
+
+class HolidayCreate(BaseModel):
+    holiday_date: date
+    name: str = Field(min_length=1, max_length=120)
+
+
+class HolidayImport(BaseModel):
+    year: int = Field(ge=2020, le=2100)
+
+
+@router.get("/holidays")
+async def list_holidays(
+    year: int | None = Query(default=None, ge=2020, le=2100),
+    actor: ActorContext = Depends(get_actor_context),
+    client: SupabaseRestClient = Depends(get_supabase_rest_client),
+) -> dict[str, Any]:
+    params: dict[str, str | int] = {
+        "select": "id,holiday_date,name",
+        "company_id": f"eq.{actor.company_id}",
+        "order": "holiday_date.asc",
+    }
+    if year is not None:
+        params["and"] = f"(holiday_date.gte.{year}-01-01,holiday_date.lte.{year}-12-31)"
+    rows = await client.select("company_holidays", access_token=actor.access_token, params=params)
+    return {"holidays": rows}
+
+
+@router.post("/holidays", status_code=status.HTTP_201_CREATED)
+async def add_holiday(
+    payload: HolidayCreate,
+    actor: ActorContext = Depends(get_actor_context),
+    client: SupabaseRestClient = Depends(get_supabase_rest_client),
+) -> dict[str, Any]:
+    require_company_admin(actor, actor.company_id)
+    rows = await client.upsert(
+        "company_holidays",
+        access_token=actor.access_token,
+        values=[
+            {
+                "company_id": str(actor.company_id),
+                "holiday_date": payload.holiday_date.isoformat(),
+                "name": payload.name,
+            }
+        ],
+        on_conflict="company_id,holiday_date",
+    )
+    return {"holiday": rows[0] if rows else None}
+
+
+@router.delete("/holidays/{holiday_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_holiday(
+    holiday_id: UUID,
+    actor: ActorContext = Depends(get_actor_context),
+    client: SupabaseRestClient = Depends(get_supabase_rest_client),
+) -> None:
+    require_company_admin(actor, actor.company_id)
+    await client.delete(
+        "company_holidays",
+        access_token=actor.access_token,
+        filters={"id": f"eq.{holiday_id}", "company_id": f"eq.{actor.company_id}"},
+    )
+
+
+@router.post("/holidays/import")
+async def import_holidays(
+    payload: HolidayImport,
+    actor: ActorContext = Depends(get_actor_context),
+    client: SupabaseRestClient = Depends(get_supabase_rest_client),
+) -> dict[str, Any]:
+    require_company_admin(actor, actor.company_id)
+    entries = SA_HOLIDAYS.get(payload.year)
+    if not entries:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No built-in South African holiday set for {payload.year}",
+        )
+    values = [
+        {
+            "company_id": str(actor.company_id),
+            "holiday_date": holiday_date,
+            "name": name,
+        }
+        for holiday_date, name in entries
+    ]
+    rows = await client.upsert(
+        "company_holidays",
+        access_token=actor.access_token,
+        values=values,
+        on_conflict="company_id,holiday_date",
+    )
+    return {"imported": len(rows), "holidays": rows}

@@ -230,7 +230,7 @@ export default function WorkspacePage() {
     if (activeModule.id === "assistant")
       return <AssistantPanel companyId={membership!.company_id} role={role} session={session!} />;
     if (activeModule.id === "leave")
-      return <LeavePanel companyId={membership!.company_id} employees={employees} role={role} session={session!} />;
+      return <LeavePanel companyId={membership!.company_id} departments={departments} employees={employees} role={role} session={session!} />;
     if (activeModule.id === "shifts")
       return <ShiftsPanel companyId={membership!.company_id} employees={employees} role={role} session={session!} />;
     if (activeModule.id === "employees")
