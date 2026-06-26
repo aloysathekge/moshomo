@@ -14,7 +14,8 @@ export type IconName =
   | "shifts"
   | "sparkles"
   | "settings"
-  | "profile";
+  | "profile"
+  | "apps";
 export type AppStatus = "live" | "coming-soon";
 export type AppGroup = "main" | "manage" | "apps" | "account";
 export type RoleNav = { label: string; order: number };
@@ -30,6 +31,8 @@ export type AppModule = {
   group: AppGroup;
   /** Sellable apps are gated by per-company entitlement; core apps are always on. */
   sellable?: boolean;
+  /** Routable but not shown in the sidebar (reached from elsewhere, e.g. Settings). */
+  hidden?: boolean;
   /** Which roles see this module, with their label + order within the group. */
   roles: Partial<Record<Role, RoleNav>>;
 };
@@ -116,6 +119,17 @@ export const APP_MODULES: AppModule[] = [
     },
   },
   {
+    id: "plan",
+    section: "plan",
+    icon: "apps",
+    status: "live",
+    group: "account",
+    hidden: true, // reached from Settings, not the sidebar (keeps the nav short)
+    roles: {
+      admin: { label: "Apps & plan", order: 0 },
+    },
+  },
+  {
     id: "settings",
     section: "settings",
     icon: "settings",
@@ -153,6 +167,7 @@ export type NavGroup = {
  * is entitled to it. `enabled` undefined means "not yet known" (show everything). */
 function isVisible(module: AppModule, role: Role, enabled?: ReadonlySet<string>): boolean {
   if (!module.roles[role]) return false;
+  if (module.hidden) return false;
   if (module.sellable && enabled && !enabled.has(module.id)) return false;
   return true;
 }

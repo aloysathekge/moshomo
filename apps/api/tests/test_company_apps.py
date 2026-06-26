@@ -11,14 +11,23 @@ from moshomo_api.supabase import get_supabase_rest_client
 
 
 class FakeRestClient:
-    def __init__(self, company_id: UUID, *, entitlements: dict[str, bool] | None = None) -> None:
+    def __init__(
+        self,
+        company_id: UUID,
+        *,
+        entitlements: dict[str, bool] | None = None,
+        active_employees: int = 0,
+    ) -> None:
         self.company_id = company_id
         self.entitlements = entitlements or {}
+        self.active_employees = active_employees
         self.upserted: list[tuple[str, list[dict[str, Any]], str]] = []
 
     async def select(self, table: str, *, access_token: str, params: dict[str, Any]) -> list[dict[str, Any]]:
         if table == "company_apps":
             return [{"app_key": k, "enabled": v} for k, v in self.entitlements.items()]
+        if table == "employees":
+            return [{"id": str(uuid4())} for _ in range(self.active_employees)]
         if table == "leave_requests":
             return []  # list endpoint after the gate passes
         raise AssertionError(f"Unexpected select table: {table}")
@@ -113,6 +122,38 @@ def test_toggle_rejects_core_app() -> None:
     )
     assert response.status_code == 400
     assert not rest.upserted
+
+
+def test_plan_computes_monthly_total() -> None:
+    company_id = uuid4()
+    # 10 active employees; Shifts disabled. Leave R15 + AI R30 enabled, Shifts off.
+    rest = FakeRestClient(company_id, entitlements={"shifts": False}, active_employees=10)
+    response = _run(
+        _actor(company_id, role="admin"),
+        rest,
+        lambda client: client.get(f"/companies/{company_id}/plan"),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["active_employees"] == 10
+    apps = {a["key"]: a for a in body["apps"]}
+    assert apps["leave"]["monthly_cents"] == 1500 * 10
+    assert apps["shifts"]["enabled"] is False
+    assert apps["shifts"]["monthly_cents"] == 0
+    assert apps["assistant"]["monthly_cents"] == 3000 * 10
+    # Total = (1500 + 3000) * 10, Shifts excluded.
+    assert body["monthly_total_cents"] == (1500 + 3000) * 10
+
+
+def test_plan_requires_admin() -> None:
+    company_id = uuid4()
+    rest = FakeRestClient(company_id, active_employees=5)
+    response = _run(
+        _actor(company_id, role="manager"),
+        rest,
+        lambda client: client.get(f"/companies/{company_id}/plan"),
+    )
+    assert response.status_code == 403
 
 
 def test_gated_router_blocks_when_app_disabled() -> None:

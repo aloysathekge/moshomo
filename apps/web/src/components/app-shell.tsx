@@ -64,7 +64,7 @@ export function AppShell({ children, companyName, enabledApps, logoUrl, role = "
         </div>
       </a>
 
-      <nav className="mt-8 flex-1 space-y-7 overflow-y-auto pr-1" aria-label="Workspace navigation">
+      <nav className="mt-6 min-h-0 flex-1 space-y-5 overflow-y-auto pr-1" aria-label="Workspace navigation">
         {groups.map((group) => (
           <div className="space-y-1" key={group.id}>
             {group.label && <p className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">{group.label}</p>}

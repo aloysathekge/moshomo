@@ -7,6 +7,7 @@ import { AppShell } from "@/components/app-shell";
 import { AssistantPanel } from "@/modules/assistant/assistant-panel";
 import { EmployeesPanel, type Account, type Employee, type Role } from "@/modules/employees/employees-panel";
 import { LeavePanel } from "@/modules/leave/leave-panel";
+import { PlanPanel } from "@/modules/plan/plan-panel";
 import { ShiftsPanel } from "@/modules/shifts/shifts-panel";
 import { Icon } from "@/components/icon";
 import { appModulesFor, moduleForSection } from "@/lib/apps";
@@ -254,6 +255,8 @@ export default function WorkspacePage() {
       return <EmployeesPanel accounts={accounts} canManage={role === "admin"} companyId={membership!.company_id} departments={departments} employees={employees} onChanged={loadWorkspace} onNotice={setNotice} session={session!} />;
     if (activeModule.id === "departments")
       return <DepartmentsView departments={departments} employees={employees} onCreate={createDepartment} />;
+    if (activeModule.id === "plan")
+      return <PlanPanel companyId={membership!.company_id} onChanged={loadWorkspace} session={session!} />;
     if (activeModule.id === "settings")
       return <SettingsView company={company} complete={setupComplete} logoUrl={logoUrl} onLogo={uploadLogo} setup={setup} uploadingLogo={uploadingLogo} />;
     return homeFor(role);
@@ -371,6 +374,22 @@ function SettingsView({ company, complete, logoUrl, onLogo, setup, uploadingLogo
         </section>
       )}
       <div className="grid gap-6">
+        <button
+          className="premium-card flex items-center justify-between gap-4 text-left transition hover:-translate-y-0.5"
+          onClick={() => go("plan")}
+          type="button"
+        >
+          <span className="flex items-center gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-surface-sunken text-ink-soft">
+              <Icon name="apps" className="size-5" />
+            </span>
+            <span>
+              <span className="block text-base font-semibold">Apps &amp; plan</span>
+              <span className="mt-0.5 block text-sm text-ink-muted">Choose your apps and see your monthly total.</span>
+            </span>
+          </span>
+          <span aria-hidden className="text-ink-faint">→</span>
+        </button>
         <LogoPanel company={company} logoUrl={logoUrl} onLogo={onLogo} uploading={uploadingLogo} />
         <section className="premium-card">
           <h2 className="text-lg font-semibold">Company details</h2>
