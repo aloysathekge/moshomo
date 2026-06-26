@@ -69,7 +69,7 @@ def test_list_apps_defaults_enabled_with_no_rows() -> None:
     )
     assert response.status_code == 200
     apps = {a["key"]: a["enabled"] for a in response.json()["apps"]}
-    assert apps == {"leave": True, "shifts": True, "assistant": True}
+    assert apps == {"leave": True, "shifts": True}  # assistant is core, not sellable
 
 
 def test_list_apps_reflects_entitlements() -> None:
@@ -126,7 +126,7 @@ def test_toggle_rejects_core_app() -> None:
 
 def test_plan_computes_monthly_total() -> None:
     company_id = uuid4()
-    # 10 active employees; Shifts disabled. Leave R15 + AI R30 enabled, Shifts off.
+    # 10 active employees; Shifts disabled, Leave enabled. (AI is core, not priced.)
     rest = FakeRestClient(company_id, entitlements={"shifts": False}, active_employees=10)
     response = _run(
         _actor(company_id, role="admin"),
@@ -137,12 +137,11 @@ def test_plan_computes_monthly_total() -> None:
     body = response.json()
     assert body["active_employees"] == 10
     apps = {a["key"]: a for a in body["apps"]}
+    assert set(apps) == {"leave", "shifts"}  # assistant is core, excluded from the plan
     assert apps["leave"]["monthly_cents"] == 1500 * 10
     assert apps["shifts"]["enabled"] is False
     assert apps["shifts"]["monthly_cents"] == 0
-    assert apps["assistant"]["monthly_cents"] == 3000 * 10
-    # Total = (1500 + 3000) * 10, Shifts excluded.
-    assert body["monthly_total_cents"] == (1500 + 3000) * 10
+    assert body["monthly_total_cents"] == 1500 * 10
 
 
 def test_plan_requires_admin() -> None:

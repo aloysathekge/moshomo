@@ -4,17 +4,13 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from moshomo_api.context import ActorContext, get_actor_context
-from moshomo_api.entitlements import require_app_enabled
 from moshomo_api.supabase import SupabaseRestClient, get_supabase_rest_client
 from moshomo_ai.llm.base import LLMClient
 from moshomo_ai.llm.factory import get_llm_client
 from moshomo_ai.runs import run_workforce_assistant
 
-router = APIRouter(
-    prefix="/workforce",
-    tags=["workforce"],
-    dependencies=[Depends(require_app_enabled("assistant"))],
-)
+# Moshomo AI is a core app — included with every plan, never entitlement-gated.
+router = APIRouter(prefix="/workforce", tags=["workforce"])
 
 
 class ConversationTurn(BaseModel):

@@ -111,7 +111,6 @@ export const APP_MODULES: AppModule[] = [
     icon: "sparkles",
     status: "live",
     group: "apps",
-    sellable: true,
     roles: {
       admin: { label: "AI Assistant", order: 2 },
       manager: { label: "AI Assistant", order: 2 },

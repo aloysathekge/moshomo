@@ -38,8 +38,10 @@ def _app(
 
 
 APP_CATALOG: list[dict[str, Any]] = [
-    # Core — always on, not billed.
+    # Core — always on, not billed. Moshomo AI is core: this is an AI-native
+    # workforce product, so the assistant ships with every plan.
     _app("dashboard", "Dashboard", "Workspace overview.", sellable=False),
+    _app("assistant", "Moshomo AI", "AI workforce assistant, included with every plan.", sellable=False),
     _app("employees", "Employees", "Employee records and management.", sellable=False),
     _app("departments", "Departments", "Organize teams into departments.", sellable=False),
     _app("settings", "Settings", "Company settings and branding.", sellable=False),
@@ -57,13 +59,6 @@ APP_CATALOG: list[dict[str, Any]] = [
         "Shift templates, scheduling, open shifts, and availability.",
         sellable=True,
         price_cents=2500,
-    ),
-    _app(
-        "assistant",
-        "Moshomo AI",
-        "AI workforce assistant grounded in your company data.",
-        sellable=True,
-        price_cents=3000,
     ),
 ]
 

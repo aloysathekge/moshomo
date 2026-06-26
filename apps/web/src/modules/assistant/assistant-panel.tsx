@@ -1,7 +1,7 @@
 "use client";
 
 import type { Session } from "@supabase/supabase-js";
-import { FormEvent, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { moshomoApi } from "@/lib/api";
 import type { Role } from "@/lib/apps";
 
@@ -52,10 +52,14 @@ const suggestions: Record<Role, string[]> = {
 
 export function AssistantPanel({
   companyId,
+  initialQuestion,
+  onInitialConsumed,
   role,
   session,
 }: {
   companyId: string;
+  initialQuestion?: string;
+  onInitialConsumed?: () => void;
   role: Role;
   session: Session;
 }) {
@@ -63,6 +67,17 @@ export function AssistantPanel({
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  const seeded = useRef(false);
+
+  // Auto-run a question passed from the home composer, once.
+  useEffect(() => {
+    if (initialQuestion && !seeded.current) {
+      seeded.current = true;
+      void ask(initialQuestion);
+      onInitialConsumed?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when a seed arrives
+  }, [initialQuestion, onInitialConsumed]);
 
   async function ask(question: string) {
     const trimmed = question.trim();
