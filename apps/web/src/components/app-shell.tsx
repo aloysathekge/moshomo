@@ -6,11 +6,11 @@ import { Icon } from "@/components/icon";
 import { navGroupsFor, type Role } from "@/lib/apps";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 
-export function AppShell({ children, companyName, logoUrl, role = "employee", userEmail }: { children: React.ReactNode; companyName?: string; logoUrl?: string; role?: Role; userEmail?: string }) {
+export function AppShell({ children, companyName, enabledApps, logoUrl, role = "employee", userEmail }: { children: React.ReactNode; companyName?: string; enabledApps?: ReadonlySet<string>; logoUrl?: string; role?: Role; userEmail?: string }) {
   const router = useRouter();
   const [hash, setHash] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
-  const groups = useMemo(() => navGroupsFor(role), [role]);
+  const groups = useMemo(() => navGroupsFor(role, enabledApps), [role, enabledApps]);
 
   useEffect(() => {
     const sync = () => {

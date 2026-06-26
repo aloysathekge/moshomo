@@ -21,9 +21,14 @@ from moshomo_api.modules.shifts.models import (
     TemplateResponse,
     TemplateUpdate,
 )
+from moshomo_api.entitlements import require_app_enabled
 from moshomo_api.supabase import SupabaseRestClient, get_supabase_rest_client
 
-router = APIRouter(prefix="/workforce/shifts", tags=["shifts"])
+router = APIRouter(
+    prefix="/workforce/shifts",
+    tags=["shifts"],
+    dependencies=[Depends(require_app_enabled("shifts"))],
+)
 
 TEMPLATE_SELECT = "id,company_id,name,start_time,end_time,color,created_at,updated_at"
 ASSIGNMENT_SELECT = (

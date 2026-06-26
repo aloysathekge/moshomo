@@ -28,6 +28,8 @@ export type AppModule = {
   status: AppStatus;
   /** Which sidebar group this module belongs to. */
   group: AppGroup;
+  /** Sellable apps are gated by per-company entitlement; core apps are always on. */
+  sellable?: boolean;
   /** Which roles see this module, with their label + order within the group. */
   roles: Partial<Record<Role, RoleNav>>;
 };
@@ -80,6 +82,7 @@ export const APP_MODULES: AppModule[] = [
     icon: "leave",
     status: "live",
     group: "apps",
+    sellable: true,
     roles: {
       admin: { label: "Leave", order: 0 },
       manager: { label: "Leave", order: 0 },
@@ -92,6 +95,7 @@ export const APP_MODULES: AppModule[] = [
     icon: "shifts",
     status: "live",
     group: "apps",
+    sellable: true,
     roles: {
       admin: { label: "Shifts", order: 1 },
       manager: { label: "Shifts", order: 1 },
@@ -104,6 +108,7 @@ export const APP_MODULES: AppModule[] = [
     icon: "sparkles",
     status: "live",
     group: "apps",
+    sellable: true,
     roles: {
       admin: { label: "AI Assistant", order: 2 },
       manager: { label: "AI Assistant", order: 2 },
@@ -144,20 +149,28 @@ export type NavGroup = {
   modules: AppModule[];
 };
 
+/** A module is visible if the role sees it and — for sellable apps — the company
+ * is entitled to it. `enabled` undefined means "not yet known" (show everything). */
+function isVisible(module: AppModule, role: Role, enabled?: ReadonlySet<string>): boolean {
+  if (!module.roles[role]) return false;
+  if (module.sellable && enabled && !enabled.has(module.id)) return false;
+  return true;
+}
+
 /** Sidebar groups (in order) with their visible modules for a role. */
-export function navGroupsFor(role: Role): NavGroup[] {
+export function navGroupsFor(role: Role, enabled?: ReadonlySet<string>): NavGroup[] {
   return APP_GROUPS.map((group) => ({
     id: group.id,
     label: group.label,
-    modules: APP_MODULES.filter((module) => module.group === group.id && module.roles[role]).sort(
+    modules: APP_MODULES.filter((module) => module.group === group.id && isVisible(module, role, enabled)).sort(
       (a, b) => a.roles[role]!.order - b.roles[role]!.order,
     ),
   })).filter((group) => group.modules.length > 0);
 }
 
 /** The modular "apps" (group "apps") visible to a role, in order. */
-export function appModulesFor(role: Role): AppModule[] {
-  return APP_MODULES.filter((module) => module.group === "apps" && module.roles[role]).sort(
+export function appModulesFor(role: Role, enabled?: ReadonlySet<string>): AppModule[] {
+  return APP_MODULES.filter((module) => module.group === "apps" && isVisible(module, role, enabled)).sort(
     (a, b) => a.roles[role]!.order - b.roles[role]!.order,
   );
 }

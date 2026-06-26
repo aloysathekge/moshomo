@@ -51,6 +51,8 @@ export default function WorkspacePage() {
   const [notice, setNotice] = useState<string>();
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [section, setSection] = useState("home");
+  // Enabled sellable app keys for this company. undefined = not yet loaded (show all).
+  const [enabledApps, setEnabledApps] = useState<Set<string>>();
 
   const loadWorkspace = useCallback(async () => {
     const supabase = getSupabaseBrowserClient();
@@ -96,6 +98,19 @@ export default function WorkspacePage() {
     setPendingInvites(
       ((invitationRows ?? []) as InvitationRow[]).filter((row) => row.status === "pending" || row.status === "sent").length,
     );
+
+    // App entitlements — which sellable apps this org has. Non-fatal: on error,
+    // leave undefined so everything stays visible (don't hide apps on a glitch).
+    try {
+      const appsRes = await moshomoApi<{ apps: { key: string; enabled: boolean }[] }>(
+        `/companies/${active.company_id}/apps`,
+        { session: data.session, companyId: active.company_id },
+      );
+      setEnabledApps(new Set(appsRes.apps.filter((a) => a.enabled).map((a) => a.key)));
+    } catch {
+      setEnabledApps(undefined);
+    }
+
     setLoading(false);
 
     // Leave metrics — non-blocking and non-fatal (degrades to zeros if leave is unavailable).
@@ -214,18 +229,20 @@ export default function WorkspacePage() {
     hasTeam: employees.length > 1,
   };
   const setupComplete = setup.hasLogo && setup.hasDepartment && setup.hasTeam;
-  const shellProps = { companyName: company?.name, logoUrl, role: membership.role, userEmail: session.user.email };
+  const shellProps = { companyName: company?.name, enabledApps, logoUrl, role: membership.role, userEmail: session.user.email };
 
   function homeFor(role: Role) {
     if (role === "employee") return <EmployeeDashboard annualRemaining={leaveStats.annualRemaining} companyName={company?.name} pendingLeave={leaveStats.myPending} upcomingShifts={shiftStats.myUpcoming} />;
     if (role === "manager") return <ManagerDashboard companyName={company?.name} employeeCount={employees.length} onLeaveToday={leaveStats.onLeaveToday} pendingApprovals={leaveStats.pendingApprovals} shiftGaps={shiftStats.openShifts} />;
-    return <AdminHome company={company} complete={setupComplete} departments={departments.length} employeeCount={employees.length} employees={employees} onLeaveToday={leaveStats.onLeaveToday} pendingInvites={pendingInvites} setup={setup} />;
+    return <AdminHome company={company} complete={setupComplete} departments={departments.length} employeeCount={employees.length} employees={employees} enabledApps={enabledApps} onLeaveToday={leaveStats.onLeaveToday} pendingInvites={pendingInvites} setup={setup} />;
   }
 
   function content() {
     const role = membership!.role;
     const activeModule = moduleForSection(section, role);
     if (!activeModule || activeModule.id === "dashboard") return homeFor(role);
+    if (activeModule.sellable && enabledApps && !enabledApps.has(activeModule.id))
+      return <LockedApp isAdmin={role === "admin"} label={activeModule.roles[role]!.label} />;
     if (activeModule.status === "coming-soon") return <ComingSoon title={activeModule.roles[role]!.label} />;
     if (activeModule.id === "assistant")
       return <AssistantPanel companyId={membership!.company_id} role={role} session={session!} />;
@@ -260,7 +277,7 @@ function CreateCompany({ notice, onSubmit }: { notice?: string; onSubmit: (event
 
 function SetupStep({ active = false, label, number }: { active?: boolean; label: string; number: string }) { return <li className="flex items-center gap-3"><span className={`grid size-8 place-items-center rounded-full text-xs font-bold ${active ? "bg-brand-900 text-white" : "bg-white text-ink-faint"}`}>{number}</span><span className={`text-sm font-medium ${active ? "text-ink" : "text-ink-faint"}`}>{label}</span></li>; }
 
-function AdminHome({ company, complete, departments, employeeCount, employees, onLeaveToday, pendingInvites, setup }: { company?: Company; complete: boolean; departments: number; employeeCount: number; employees: Employee[]; onLeaveToday: number; pendingInvites: number; setup: SetupState }) {
+function AdminHome({ company, complete, departments, employeeCount, employees, enabledApps, onLeaveToday, pendingInvites, setup }: { company?: Company; complete: boolean; departments: number; employeeCount: number; employees: Employee[]; enabledApps?: ReadonlySet<string>; onLeaveToday: number; pendingInvites: number; setup: SetupState }) {
   return (
     <div className="mx-auto max-w-6xl animate-rise">
       <DashboardHeading actions={<><button className="secondary-button" onClick={() => go("assistant")}><Icon className="size-4" name="sparkles" />Ask Moshomo</button><button className="primary-button" onClick={() => go("employees")}><Icon className="size-4" name="people" />Add employee</button></>} eyebrow="Admin dashboard" title="Workforce overview" subtitle={`A clear view of people and workspace activity${company?.name ? ` at ${company.name}` : ""}.`} />
@@ -297,7 +314,7 @@ function AdminHome({ company, complete, departments, employeeCount, employees, o
           <div className="mt-5 rounded-xl bg-brand-50 p-4"><div className="flex items-center gap-2 text-sm font-semibold text-brand-800"><span className="size-2 rounded-full bg-brand-500" />Workspace status</div><p className="mt-2 text-xs leading-5 text-brand-700/80">Core employee management is active. Leave and shift modules will appear here as they launch.</p></div>
         </section>
       </div>
-      <AppsGrid role="admin" />
+      <AppsGrid enabledApps={enabledApps} role="admin" />
     </div>
   );
 }
@@ -396,6 +413,27 @@ function SetupBanner({ setup }: { setup: SetupState }) {
   );
 }
 
+function LockedApp({ isAdmin, label }: { isAdmin: boolean; label: string }) {
+  return (
+    <div className="mx-auto max-w-2xl animate-rise">
+      <div className="premium-card text-center">
+        <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-surface-sunken text-ink-soft">
+          <svg aria-hidden className="size-6" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" viewBox="0 0 24 24">
+            <rect height="11" rx="2" width="18" x="3" y="11" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+        </span>
+        <h1 className="mt-4 text-2xl font-semibold tracking-tight">{label} isn’t in your plan</h1>
+        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-ink-muted">
+          {isAdmin
+            ? "Add this app to your organization’s plan to switch it on for your team."
+            : "This app isn’t enabled for your organization. Ask an admin to add it to your plan."}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function ComingSoon({ title }: { title: string }) {
   return (
     <div className="mx-auto max-w-4xl animate-rise">
@@ -411,8 +449,8 @@ function LogoPanel({ company, logoUrl, uploading, onLogo }: { company?: Company;
   return <section className="premium-card"><h2 className="text-lg font-semibold">Company logo</h2><p className="mt-1 text-sm leading-6 text-ink-muted">Used in the sidebar and branded employee experience. PNG, JPEG, or WebP up to 5 MB.</p><div className="mt-5 flex items-center gap-4"><div className="grid size-20 shrink-0 place-items-center rounded-2xl bg-surface-muted bg-contain bg-center bg-no-repeat text-xl font-black text-brand-800 ring-1 ring-brand-300/30" style={logoUrl ? { backgroundImage: `url("${logoUrl}")` } : undefined}>{logoUrl ? null : (company?.name ?? "M").slice(0, 2).toUpperCase()}</div><label className="secondary-button cursor-pointer">{uploading ? "Uploading..." : logoUrl ? "Replace logo" : "Upload logo"}<input accept="image/png,image/jpeg,image/webp" className="sr-only" disabled={uploading} onChange={(event) => { const file = event.target.files?.[0]; if (file) void onLogo(file); event.currentTarget.value = ""; }} type="file" /></label></div></section>;
 }
 
-function AppsGrid({ role }: { role: Role }) {
-  const apps = appModulesFor(role);
+function AppsGrid({ enabledApps, role }: { enabledApps?: ReadonlySet<string>; role: Role }) {
+  const apps = appModulesFor(role, enabledApps);
   if (apps.length === 0) return null;
   return (
     <section className="premium-card mt-6">

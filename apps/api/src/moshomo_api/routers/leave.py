@@ -8,9 +8,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from moshomo_api.context import ActorContext, get_actor_context, require_company_admin
+from moshomo_api.entitlements import require_app_enabled
 from moshomo_api.supabase import SupabaseRestClient, get_supabase_rest_client
 
-router = APIRouter(prefix="/workforce/leave", tags=["leave"])
+router = APIRouter(
+    prefix="/workforce/leave",
+    tags=["leave"],
+    dependencies=[Depends(require_app_enabled("leave"))],
+)
 
 LeaveType = Literal["annual", "sick", "family_responsibility", "unpaid"]
 DayPart = Literal["full", "morning", "afternoon"]
