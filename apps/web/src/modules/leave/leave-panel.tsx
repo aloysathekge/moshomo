@@ -230,6 +230,17 @@ export function LeavePanel({
     }
   }
 
+  type Tab = "my" | "approvals" | "calendar" | "settings";
+  const [tab, setTab] = useState<Tab>("my");
+  const tabs: { id: Tab; label: string }[] = [
+    { id: "my", label: "My leave" },
+    ...(canApprove
+      ? [{ id: "approvals" as const, label: approvals.length ? `Approvals (${approvals.length})` : "Approvals" }]
+      : []),
+    ...(canApprove ? [{ id: "calendar" as const, label: "Team calendar" }] : []),
+    ...(isAdmin ? [{ id: "settings" as const, label: "Settings" }] : []),
+  ];
+
   return (
     <div className="mx-auto max-w-5xl animate-rise">
       <div className="mb-6">
@@ -250,27 +261,46 @@ export function LeavePanel({
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <RequestForm balances={balances} busy={busy} holidayDates={holidayDates} onSubmit={submitRequest} />
-        <BalanceCard balances={balances} />
+      <div className="mb-6 flex flex-wrap gap-2" role="tablist">
+        {tabs.map((t) => (
+          <button
+            aria-selected={tab === t.id}
+            className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+              tab === t.id ? "bg-ink text-white" : "bg-surface-muted text-ink-soft hover:bg-surface-sunken"
+            }`}
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            role="tab"
+            type="button"
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      {canApprove && (
+      {tab === "my" && (
+        <div className="space-y-6">
+          <BalanceStrip balances={balances} />
+          <div className="grid gap-6 lg:grid-cols-2">
+            <RequestForm balances={balances} busy={busy} holidayDates={holidayDates} onSubmit={submitRequest} />
+            <MyRequestsSection onCancel={(id) => decide(id, "cancel")} requests={myRequests} rowBusy={rowBusy} />
+          </div>
+        </div>
+      )}
+
+      {tab === "approvals" && canApprove && (
         <ApprovalsSection approvals={approvals} onDecide={decide} rowBusy={rowBusy} />
       )}
 
-      <MyRequestsSection onCancel={(id) => decide(id, "cancel")} requests={myRequests} rowBusy={rowBusy} />
-
-      {canApprove && (
+      {tab === "calendar" && canApprove && (
         <TeamCalendar departments={departments} employees={employees} holidayDates={holidayDates} requests={allRequests} />
       )}
 
-      {isAdmin && (
-        <HolidaysAdmin companyId={companyId} holidays={holidays} onChanged={() => void load()} onNotice={setNotice} session={session} />
-      )}
-
-      {isAdmin && (
-        <AllowancesEditor busy={busy} companyId={companyId} employees={employees} onSaved={(m) => { setNotice(m); void load(); }} session={session} />
+      {tab === "settings" && isAdmin && (
+        <div className="space-y-6">
+          <HolidaysAdmin companyId={companyId} holidays={holidays} onChanged={() => void load()} onNotice={setNotice} session={session} />
+          <AllowancesEditor busy={busy} companyId={companyId} employees={employees} onSaved={(m) => { setNotice(m); void load(); }} session={session} />
+        </div>
       )}
     </div>
   );
@@ -429,46 +459,34 @@ function RequestForm({
   );
 }
 
-function BalanceCard({ balances }: { balances: Balance[] }) {
+function BalanceStrip({ balances }: { balances: Balance[] }) {
+  // Only show types that are actually in play (configured or with activity).
+  const shown = balances.filter((b) => b.allotted > 0 || b.used > 0 || b.pending > 0);
+  if (shown.length === 0) {
+    return (
+      <div className="empty-state px-5 py-6">
+        <p className="text-sm font-semibold text-ink-soft">No allowances set</p>
+        <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-ink-muted">
+          Your balances appear once an admin assigns leave allowances.
+        </p>
+      </div>
+    );
+  }
   return (
-    <section className="premium-card">
-      <h2 className="text-lg font-semibold">My balance</h2>
-      <p className="mt-1 text-sm text-ink-muted">Allowance minus approved and reserved leave.</p>
-      {balances.length === 0 ? (
-        <div className="empty-state mt-5 px-5 py-8">
-          <p className="text-sm font-semibold text-ink-soft">No allowances set</p>
-          <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-ink-muted">Your balances appear once an admin assigns allowances.</p>
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {shown.map((b) => (
+        <div className="metric-card" key={b.leave_type}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">{typeLabel(b.leave_type)}</p>
+          <p className="mt-2 text-2xl font-semibold tabular-nums text-ink">
+            {b.available}
+            <span className="ml-1.5 text-xs font-normal text-ink-faint">available</span>
+          </p>
+          <p className="mt-1 text-[11px] tabular-nums text-ink-muted">
+            {b.used} used · {b.pending} pending · {b.allotted} total
+          </p>
         </div>
-      ) : (
-        <ul className="mt-5 space-y-3">
-          {balances.map((b) => (
-            <li className="rounded-2xl bg-surface-muted p-4" key={b.leave_type}>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold">{typeLabel(b.leave_type)}</span>
-                <span className="text-right">
-                  <span className="block text-lg font-semibold tabular-nums text-ink">{b.available}</span>
-                  <span className="block text-[11px] uppercase tracking-wide text-ink-faint">available</span>
-                </span>
-              </div>
-              <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                <span className="rounded-xl bg-surface-sunken px-2 py-1.5">
-                  <span className="block text-sm font-semibold tabular-nums text-ink-soft">{b.allotted}</span>
-                  <span className="block text-[11px] text-ink-faint">allotted</span>
-                </span>
-                <span className="rounded-xl bg-surface-sunken px-2 py-1.5">
-                  <span className="block text-sm font-semibold tabular-nums text-ink-soft">{b.used}</span>
-                  <span className="block text-[11px] text-ink-faint">used</span>
-                </span>
-                <span className="rounded-xl bg-surface-sunken px-2 py-1.5">
-                  <span className="block text-sm font-semibold tabular-nums text-ink-soft">{b.pending}</span>
-                  <span className="block text-[11px] text-ink-faint">pending</span>
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+      ))}
+    </div>
   );
 }
 
@@ -482,7 +500,7 @@ function ApprovalsSection({
   rowBusy: Record<string, boolean>;
 }) {
   return (
-    <section className="premium-card mt-6">
+    <section className="premium-card">
       <h2 className="text-lg font-semibold">Approvals</h2>
       <p className="mt-1 text-sm text-ink-muted">Pending requests awaiting your decision.</p>
       {approvals.length === 0 ? (
@@ -601,7 +619,7 @@ function MyRequestsSection({
   }
 
   return (
-    <section className="premium-card mt-6">
+    <section className="premium-card">
       <h2 className="text-lg font-semibold">My requests</h2>
       {requests.length === 0 ? (
         <div className="empty-state mt-5 px-5 py-8">
@@ -692,7 +710,7 @@ function TeamCalendar({
   const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   return (
-    <section className="premium-card mt-6">
+    <section className="premium-card">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">Team calendar</h2>
@@ -855,7 +873,7 @@ function HolidaysAdmin({
   const years = [currentYear - 1, currentYear, currentYear + 1];
 
   return (
-    <section className="premium-card mt-6">
+    <section className="premium-card">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">Public holidays</h2>
@@ -981,7 +999,7 @@ function AllowancesEditor({
   }
 
   return (
-    <section className="premium-card mt-6">
+    <section className="premium-card">
       <h2 className="text-lg font-semibold">Allowances</h2>
       <p className="mt-1 text-sm text-ink-muted">Set the annual allowance per leave type for an employee.</p>
       <label className="mt-5 block max-w-sm text-sm font-medium text-ink-soft" htmlFor="allowance-employee">Employee

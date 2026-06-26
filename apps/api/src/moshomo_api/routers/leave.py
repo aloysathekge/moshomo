@@ -529,8 +529,13 @@ async def list_holidays(
     }
     if year is not None:
         params["and"] = f"(holiday_date.gte.{year}-01-01,holiday_date.lte.{year}-12-31)"
-    rows = await client.select("company_holidays", access_token=actor.access_token, params=params)
-    return {"holidays": rows}
+    try:
+        rows = await client.select("company_holidays", access_token=actor.access_token, params=params)
+    except HTTPException:
+        # Degrade gracefully when the company_holidays table is not yet available
+        # (migration not applied) so the rest of Leave keeps working.
+        return {"holidays": [], "available": False}
+    return {"holidays": rows, "available": True}
 
 
 @router.post("/holidays", status_code=status.HTTP_201_CREATED)
