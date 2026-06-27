@@ -626,3 +626,122 @@ async def import_holidays(
         on_conflict="company_id,holiday_date",
     )
     return {"imported": len(rows), "holidays": rows}
+
+
+# ---------- Leave policies (accrual engine, Phase 1: config only) ----------
+
+PolicyType = Literal["accrual", "cycle", "annual_fixed", "per_event", "service_tiered", "untracked"]
+AccrualPeriod = Literal["monthly", "weekly", "biweekly"]
+POLICY_SELECT = (
+    "leave_type,policy_type,entitlement_days,accrual_rate,accrual_period,cycle_months,"
+    "carryover_cap,expiry_months,probation_months,service_tiers"
+)
+
+
+def _policy(
+    leave_type: LeaveType,
+    policy_type: PolicyType,
+    *,
+    entitlement_days: float = 0,
+    accrual_rate: float = 0,
+    accrual_period: AccrualPeriod = "monthly",
+    cycle_months: int = 12,
+    carryover_cap: float | None = None,
+    expiry_months: int | None = None,
+    probation_months: int = 0,
+    service_tiers: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    return {
+        "leave_type": leave_type,
+        "policy_type": policy_type,
+        "entitlement_days": entitlement_days,
+        "accrual_rate": accrual_rate,
+        "accrual_period": accrual_period,
+        "cycle_months": cycle_months,
+        "carryover_cap": carryover_cap,
+        "expiry_months": expiry_months,
+        "probation_months": probation_months,
+        "service_tiers": service_tiers or [],
+    }
+
+
+# Starting points (not legal advice) — admins override per company.
+BCEA_DEFAULT_POLICIES: list[dict[str, Any]] = [
+    _policy("annual", "accrual", entitlement_days=15, accrual_rate=1.25, cycle_months=12, carryover_cap=15, expiry_months=6),
+    _policy("sick", "cycle", entitlement_days=30, cycle_months=36, probation_months=6),
+    _policy("family_responsibility", "annual_fixed", entitlement_days=3, cycle_months=12, carryover_cap=0),
+    _policy("maternity", "per_event", entitlement_days=120),
+    _policy("parental", "per_event", entitlement_days=10),
+    _policy("long_service", "service_tiered", service_tiers=[{"years": 5, "days": 1}, {"years": 10, "days": 3}]),
+    _policy("study", "untracked"),
+    _policy("unpaid", "untracked"),
+]
+
+
+class LeavePolicyItem(BaseModel):
+    leave_type: LeaveType
+    policy_type: PolicyType
+    entitlement_days: float = Field(default=0, ge=0)
+    accrual_rate: float = Field(default=0, ge=0)
+    accrual_period: AccrualPeriod = "monthly"
+    cycle_months: int = Field(default=12, gt=0)
+    carryover_cap: float | None = Field(default=None, ge=0)
+    expiry_months: int | None = Field(default=None, ge=0)
+    probation_months: int = Field(default=0, ge=0)
+    service_tiers: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class LeavePoliciesUpdate(BaseModel):
+    policies: list[LeavePolicyItem]
+
+
+@router.get("/policies")
+async def list_leave_policies(
+    actor: ActorContext = Depends(get_actor_context),
+    client: SupabaseRestClient = Depends(get_supabase_rest_client),
+) -> dict[str, Any]:
+    try:
+        rows = await client.select(
+            "leave_policies",
+            access_token=actor.access_token,
+            params={"select": POLICY_SELECT, "company_id": f"eq.{actor.company_id}", "order": "leave_type.asc"},
+        )
+    except HTTPException:
+        # Degrade gracefully until the leave_policies migration is applied.
+        return {"policies": [], "available": False}
+    return {"policies": rows, "available": True}
+
+
+@router.put("/policies")
+async def set_leave_policies(
+    payload: LeavePoliciesUpdate,
+    actor: ActorContext = Depends(get_actor_context),
+    client: SupabaseRestClient = Depends(get_supabase_rest_client),
+) -> dict[str, Any]:
+    require_company_admin(actor, actor.company_id)
+    if not payload.policies:
+        return {"policies": []}
+    values = [{"company_id": str(actor.company_id), **item.model_dump()} for item in payload.policies]
+    rows = await client.upsert(
+        "leave_policies",
+        access_token=actor.access_token,
+        values=values,
+        on_conflict="company_id,leave_type",
+    )
+    return {"policies": rows}
+
+
+@router.post("/policies/seed")
+async def seed_leave_policies(
+    actor: ActorContext = Depends(get_actor_context),
+    client: SupabaseRestClient = Depends(get_supabase_rest_client),
+) -> dict[str, Any]:
+    require_company_admin(actor, actor.company_id)
+    values = [{"company_id": str(actor.company_id), **policy} for policy in BCEA_DEFAULT_POLICIES]
+    rows = await client.upsert(
+        "leave_policies",
+        access_token=actor.access_token,
+        values=values,
+        on_conflict="company_id,leave_type",
+    )
+    return {"seeded": len(rows), "policies": rows}

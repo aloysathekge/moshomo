@@ -88,6 +88,8 @@ class FakeRestClient:
         sel = str(params.get("select", ""))
         if table == "company_holidays":
             return [{"id": str(uuid4()), "holiday_date": d, "name": "Holiday"} for d in self.holidays]
+        if table == "leave_policies":
+            return []
         if table == "leave_allowances":
             if sel == "allotted_days":  # _allotted_for
                 return [{"allotted_days": self.allotted}] if self.allotted is not None else []
@@ -490,6 +492,61 @@ def test_unknown_holiday_year_is_404() -> None:
         lambda client: client.post("/workforce/leave/holidays/import", json={"year": 2099}),
     )
     assert response.status_code == 404
+
+
+def test_list_leave_policies() -> None:
+    company_id = uuid4()
+    rest = FakeRestClient(company_id)
+    response = _run(
+        _actor(company_id, role="employee"),
+        rest,
+        lambda client: client.get("/workforce/leave/policies"),
+    )
+    assert response.status_code == 200
+    assert response.json()["available"] is True
+
+
+def test_admin_seeds_bcea_policies() -> None:
+    company_id = uuid4()
+    rest = FakeRestClient(company_id)
+    response = _run(
+        _actor(company_id, role="admin"),
+        rest,
+        lambda client: client.post("/workforce/leave/policies/seed"),
+    )
+    assert response.status_code == 200
+    assert response.json()["seeded"] == 8
+    assert rest.upserted[0][0] == "leave_policies"
+    assert rest.upserted[0][2] == "company_id,leave_type"
+
+
+def test_admin_sets_leave_policies() -> None:
+    company_id = uuid4()
+    rest = FakeRestClient(company_id)
+    response = _run(
+        _actor(company_id, role="admin"),
+        rest,
+        lambda client: client.put(
+            "/workforce/leave/policies",
+            json={"policies": [{"leave_type": "annual", "policy_type": "accrual", "accrual_rate": 1.25, "entitlement_days": 15}]},
+        ),
+    )
+    assert response.status_code == 200
+    assert rest.upserted[0][0] == "leave_policies"
+
+
+def test_non_admin_cannot_set_policies() -> None:
+    company_id = uuid4()
+    rest = FakeRestClient(company_id)
+    response = _run(
+        _actor(company_id, role="manager"),
+        rest,
+        lambda client: client.put(
+            "/workforce/leave/policies",
+            json={"policies": [{"leave_type": "annual", "policy_type": "accrual"}]},
+        ),
+    )
+    assert response.status_code == 403
 
 
 def test_admin_deletes_holiday() -> None:

@@ -312,6 +312,7 @@ export function LeavePanel({
 
       {tab === "settings" && isAdmin && (
         <div className="space-y-6">
+          <LeavePoliciesEditor companyId={companyId} onNotice={setNotice} session={session} />
           <HolidaysAdmin companyId={companyId} holidays={holidays} onChanged={() => void load()} onNotice={setNotice} session={session} />
           <AllowancesEditor busy={busy} companyId={companyId} employees={employees} onSaved={(m) => { setNotice(m); void load(); }} session={session} />
         </div>
@@ -1043,5 +1044,188 @@ function AllowancesEditor({
         </>
       )}
     </section>
+  );
+}
+
+type PolicyType = "accrual" | "cycle" | "annual_fixed" | "per_event" | "service_tiered" | "untracked";
+type Policy = {
+  leave_type: LeaveTypeValue;
+  policy_type: PolicyType;
+  entitlement_days: number;
+  accrual_rate: number;
+  accrual_period: "monthly" | "weekly" | "biweekly";
+  cycle_months: number;
+  carryover_cap: number | null;
+  expiry_months: number | null;
+  probation_months: number;
+  service_tiers: { years: number; days: number }[];
+};
+
+const POLICY_TYPE_LABELS: Record<PolicyType, string> = {
+  accrual: "Monthly accrual",
+  cycle: "Multi-year cycle",
+  annual_fixed: "Fixed per year",
+  per_event: "Per event",
+  service_tiered: "Service-based",
+  untracked: "Not tracked",
+};
+
+function LeavePoliciesEditor({
+  companyId,
+  onNotice,
+  session,
+}: {
+  companyId: string;
+  onNotice: (message: string) => void;
+  session: Session;
+}) {
+  const [policies, setPolicies] = useState<Policy[] | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await moshomoApi<{ policies: Policy[] }>("/workforce/leave/policies", { session, companyId });
+      setPolicies(res.policies ?? []);
+    } catch {
+      setPolicies([]);
+    }
+  }, [companyId, session]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- state set after async load
+    void load();
+  }, [load]);
+
+  async function seed() {
+    setBusy(true);
+    try {
+      await moshomoApi("/workforce/leave/policies/seed", { method: "POST", session, companyId, body: {} });
+      onNotice("South African (BCEA) default policies loaded.");
+      await load();
+    } catch (error) {
+      onNotice(error instanceof Error ? error.message : "Could not load defaults.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function save() {
+    if (!policies) return;
+    setBusy(true);
+    try {
+      await moshomoApi("/workforce/leave/policies", { method: "PUT", session, companyId, body: { policies } });
+      onNotice("Leave policies saved.");
+      await load();
+    } catch (error) {
+      onNotice(error instanceof Error ? error.message : "Could not save policies.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function update(type: LeaveTypeValue, patch: Partial<Policy>) {
+    setPolicies((prev) => (prev ? prev.map((p) => (p.leave_type === type ? { ...p, ...patch } : p)) : prev));
+  }
+
+  return (
+    <section className="premium-card">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">Leave policies</h2>
+          <p className="mt-1 text-sm text-ink-muted">How each leave type accrues. Powers automatic balances.</p>
+        </div>
+        <button className="secondary-button px-3 py-2 text-sm" disabled={busy} onClick={seed}>
+          Load South African defaults
+        </button>
+      </div>
+
+      {policies === null ? (
+        <p className="mt-5 text-sm text-ink-muted">Loading…</p>
+      ) : policies.length === 0 ? (
+        <div className="empty-state mt-5 px-5 py-8">
+          <p className="text-sm font-semibold text-ink-soft">No policies set</p>
+          <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-ink-muted">
+            Load the South African (BCEA) defaults to get started, then fine-tune per type.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="mt-5 space-y-3">
+            {policies.map((p) => (
+              <div className="rounded-2xl bg-surface-muted p-4" key={p.leave_type}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">{typeLabel(p.leave_type)}</span>
+                  <select
+                    aria-label={`${p.leave_type} policy type`}
+                    className="input w-auto py-2 text-sm"
+                    onChange={(e) => update(p.leave_type, { policy_type: e.target.value as PolicyType })}
+                    value={p.policy_type}
+                  >
+                    {(Object.keys(POLICY_TYPE_LABELS) as PolicyType[]).map((pt) => (
+                      <option key={pt} value={pt}>{POLICY_TYPE_LABELS[pt]}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  {p.policy_type !== "untracked" && p.policy_type !== "service_tiered" && (
+                    <PolicyNum label={p.policy_type === "per_event" ? "Days / event" : "Days / cycle"} onChange={(v) => update(p.leave_type, { entitlement_days: v ?? 0 })} value={p.entitlement_days} />
+                  )}
+                  {p.policy_type === "accrual" && (
+                    <PolicyNum label="Accrued / month" onChange={(v) => update(p.leave_type, { accrual_rate: v ?? 0 })} step="0.01" value={p.accrual_rate} />
+                  )}
+                  {(p.policy_type === "accrual" || p.policy_type === "cycle") && (
+                    <PolicyNum label="Cycle (months)" onChange={(v) => update(p.leave_type, { cycle_months: v ?? 12 })} value={p.cycle_months} />
+                  )}
+                  {(p.policy_type === "accrual" || p.policy_type === "annual_fixed") && (
+                    <PolicyNum label="Carry-over cap" nullable onChange={(v) => update(p.leave_type, { carryover_cap: v })} value={p.carryover_cap} />
+                  )}
+                  {p.policy_type === "accrual" && (
+                    <PolicyNum label="Expiry (months)" nullable onChange={(v) => update(p.leave_type, { expiry_months: v })} value={p.expiry_months} />
+                  )}
+                  {p.policy_type === "cycle" && (
+                    <PolicyNum label="Probation (months)" onChange={(v) => update(p.leave_type, { probation_months: v ?? 0 })} value={p.probation_months} />
+                  )}
+                  {p.policy_type === "untracked" && <p className="text-xs text-ink-faint">No balance is tracked for this type.</p>}
+                  {p.policy_type === "service_tiered" && <p className="text-xs text-ink-faint">Service tiers are configured separately.</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+          <button className="primary-button mt-5" disabled={busy} onClick={save}>{busy ? "Saving…" : "Save policies"}</button>
+        </>
+      )}
+    </section>
+  );
+}
+
+function PolicyNum({
+  label,
+  nullable,
+  onChange,
+  step,
+  value,
+}: {
+  label: string;
+  nullable?: boolean;
+  onChange: (value: number | null) => void;
+  step?: string;
+  value: number | null;
+}) {
+  return (
+    <label className="text-xs font-medium text-ink-soft">
+      {label}
+      <input
+        className="input mt-1.5 py-2 text-sm"
+        min={0}
+        onChange={(e) => {
+          const raw = e.target.value;
+          if (raw === "") onChange(nullable ? null : 0);
+          else onChange(Number(raw));
+        }}
+        step={step ?? "1"}
+        type="number"
+        value={value ?? ""}
+      />
+    </label>
   );
 }
