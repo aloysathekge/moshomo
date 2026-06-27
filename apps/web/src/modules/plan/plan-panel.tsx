@@ -129,7 +129,7 @@ export function PlanPanel({
                       aria-checked={app.enabled}
                       aria-label={`${app.enabled ? "Disable" : "Enable"} ${app.name}`}
                       className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition ${
-                        app.enabled ? "bg-ink" : "bg-surface-sunken"
+                        app.enabled ? "bg-ink" : "bg-ink/25"
                       } ${busy ? "opacity-50" : ""}`}
                       disabled={busy}
                       onClick={() => toggle(app.key, !app.enabled)}

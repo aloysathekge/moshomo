@@ -35,6 +35,8 @@ class FakeRestClient:
         allotted: float | None = None,
         committed_days: float = 0.0,
         approved_committed: list[dict[str, Any]] | None = None,
+        policies: list[dict[str, Any]] | None = None,
+        start_date: str | None = None,
     ) -> None:
         self.company_id = company_id
         self.request_id = uuid4()
@@ -48,6 +50,8 @@ class FakeRestClient:
         self.allotted = allotted
         self.committed_days = committed_days
         self.approved_committed = approved_committed
+        self.policies = policies
+        self.start_date = start_date
         self.calls: list[tuple[str, str, dict[str, Any]]] = []
         self.inserted: list[tuple[str, dict[str, Any]]] = []
         self.updated: list[tuple[str, dict[str, Any]]] = []
@@ -89,7 +93,9 @@ class FakeRestClient:
         if table == "company_holidays":
             return [{"id": str(uuid4()), "holiday_date": d, "name": "Holiday"} for d in self.holidays]
         if table == "leave_policies":
-            return []
+            return self.policies or []
+        if table == "employees":
+            return [{"start_date": self.start_date}]
         if table == "leave_allowances":
             if sel == "allotted_days":  # _allotted_for
                 return [{"allotted_days": self.allotted}] if self.allotted is not None else []
@@ -492,6 +498,39 @@ def test_unknown_holiday_year_is_404() -> None:
         lambda client: client.post("/workforce/leave/holidays/import", json={"year": 2099}),
     )
     assert response.status_code == 404
+
+
+def test_balances_use_policy_entitlement_over_allowance() -> None:
+    company_id = uuid4()
+    rest = FakeRestClient(
+        company_id,
+        approved_committed=[],
+        start_date="2020-01-01",
+        policies=[
+            {
+                "leave_type": "annual",
+                "policy_type": "annual_fixed",
+                "entitlement_days": 18,
+                "accrual_rate": 0,
+                "accrual_period": "monthly",
+                "cycle_months": 12,
+                "carryover_cap": None,
+                "expiry_months": None,
+                "probation_months": 0,
+                "service_tiers": [],
+            }
+        ],
+    )
+    response = _run(
+        _actor(company_id, role="admin", employee_id=uuid4()),
+        rest,
+        lambda client: client.get("/workforce/leave/balances"),
+    )
+    assert response.status_code == 200
+    annual = next(b for b in response.json()["balances"] if b["leave_type"] == "annual")
+    assert annual["allotted"] == 18.0  # policy entitlement, overrides the allowance
+    assert annual["available"] == 18.0
+    assert annual["policy_type"] == "annual_fixed"
 
 
 def test_list_leave_policies() -> None:

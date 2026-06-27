@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import calendar
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Literal
 from uuid import UUID
@@ -443,6 +444,98 @@ async def decide_leave_request(
     return LeaveRequestResponse.model_validate(refreshed[0] if refreshed else updated[0])
 
 
+# ---------- Accrual engine (Phase 2: compute-on-read) ----------
+# Entitlement is derived from the company's leave_policies + the employee's tenure.
+# (taken = approved leave, pending = reserved; both already in leave_requests, so no
+# ledger is needed yet — it lands in Phase 4 for adjustments/forfeits/audit.)
+
+
+def _add_months(d: date, months: int) -> date:
+    total = d.month - 1 + months
+    year = d.year + total // 12
+    month = total % 12 + 1
+    day = min(d.day, calendar.monthrange(year, month)[1])
+    return date(year, month, day)
+
+
+def _months_between(start: date, end: date) -> int:
+    if end <= start:
+        return 0
+    months = (end.year - start.year) * 12 + (end.month - start.month)
+    if end.day < start.day:
+        months -= 1
+    return max(0, months)
+
+
+def _cycle_start(start: date, as_of: date, cycle_months: int) -> date:
+    cycles = _months_between(start, as_of) // max(1, cycle_months)
+    return _add_months(start, cycles * cycle_months)
+
+
+def policy_entitlement(policy: dict[str, Any], start_date: date | None, as_of: date) -> float:
+    """Days an employee is entitled to for this leave type, per the policy + tenure."""
+    ptype = policy.get("policy_type")
+    base = float(policy.get("entitlement_days") or 0)
+    if ptype == "untracked":
+        return 0.0
+    if ptype in ("per_event", "annual_fixed", "cycle"):
+        return base  # full entitlement for the current cycle/event (probation = Phase 3)
+    if ptype == "service_tiered":
+        years = (_months_between(start_date, as_of) // 12) if start_date else 0
+        extra = 0.0
+        for tier in policy.get("service_tiers") or []:
+            try:
+                if years >= int(tier.get("years", 0)):
+                    extra = max(extra, float(tier.get("days", 0)))
+            except (TypeError, ValueError):
+                continue
+        return base + extra
+    if ptype == "accrual":
+        if start_date is None:
+            return base  # cannot accrue without a start date → grant full entitlement
+        cstart = _cycle_start(start_date, as_of, int(policy.get("cycle_months") or 12))
+        accrued = float(policy.get("accrual_rate") or 0) * _months_between(cstart, as_of)
+        return round(min(accrued, base) if base else accrued, 2)
+    return base
+
+
+async def _fetch_policies(client: SupabaseRestClient, actor: ActorContext) -> dict[str, dict[str, Any]]:
+    try:
+        rows = await client.select(
+            "leave_policies",
+            access_token=actor.access_token,
+            params={"select": POLICY_SELECT, "company_id": f"eq.{actor.company_id}"},
+        )
+    except Exception:
+        return {}
+    return {row["leave_type"]: row for row in rows}
+
+
+async def _employee_start_date(
+    client: SupabaseRestClient, actor: ActorContext, employee_id: str
+) -> date | None:
+    try:
+        rows = await client.select(
+            "employees",
+            access_token=actor.access_token,
+            params={
+                "select": "start_date",
+                "id": f"eq.{employee_id}",
+                "company_id": f"eq.{actor.company_id}",
+                "limit": 1,
+            },
+        )
+    except Exception:
+        return None
+    raw = rows[0].get("start_date") if rows else None
+    if not raw:
+        return None
+    try:
+        return date.fromisoformat(raw)
+    except ValueError:
+        return None
+
+
 @router.get("/balances")
 async def leave_balances(
     employee_id: UUID | None = Query(default=None),
@@ -452,6 +545,10 @@ async def leave_balances(
     target = str(employee_id) if employee_id else (str(actor.employee_id) if actor.employee_id else None)
     if target is None:
         return {"employee_id": None, "balances": []}
+
+    today = date.today()
+    policies = await _fetch_policies(client, actor)
+    start_date = await _employee_start_date(client, actor, target)
 
     allowances = await client.select(
         "leave_allowances",
@@ -466,7 +563,7 @@ async def leave_balances(
         "leave_requests",
         access_token=actor.access_token,
         params={
-            "select": "leave_type,days,status",
+            "select": "leave_type,days,status,start_date",
             "company_id": f"eq.{actor.company_id}",
             "employee_id": f"eq.{target}",
             "status": f"in.{COMMITTING_STATUSES}",
@@ -474,30 +571,49 @@ async def leave_balances(
     )
 
     allotted_by_type = {row["leave_type"]: float(row["allotted_days"]) for row in allowances}
-    used_by_type: dict[str, float] = {}
-    pending_by_type: dict[str, float] = {}
-    for row in committed:
-        bucket = used_by_type if row["status"] == "approved" else pending_by_type
-        bucket[row["leave_type"]] = bucket.get(row["leave_type"], 0.0) + float(row["days"])
 
     balances = []
     for leave_type in LEAVE_TYPES:
-        allotted = allotted_by_type.get(leave_type, 0.0)
-        used = used_by_type.get(leave_type, 0.0)
-        pending = pending_by_type.get(leave_type, 0.0)
-        available = allotted - used - pending
+        policy = policies.get(leave_type)
+        if policy:
+            entitlement = policy_entitlement(policy, start_date, today)
+            policy_type = policy.get("policy_type")
+            cycle_months = int(policy.get("cycle_months") or 12)
+            # Scope usage to the current cycle so last cycle's leave doesn't count.
+            cycle_floor = (
+                _cycle_start(start_date, today, cycle_months).isoformat()
+                if start_date and policy_type in ("accrual", "cycle", "annual_fixed")
+                else None
+            )
+        else:
+            entitlement = allotted_by_type.get(leave_type, 0.0)
+            policy_type = None
+            cycle_floor = None
+
+        used = pending = 0.0
+        for row in committed:
+            if row["leave_type"] != leave_type:
+                continue
+            if cycle_floor and str(row.get("start_date") or "") < cycle_floor:
+                continue
+            if row["status"] == "approved":
+                used += float(row["days"])
+            else:
+                pending += float(row["days"])
+
+        available = entitlement - used - pending
         balances.append(
             {
                 "leave_type": leave_type,
-                "allotted": allotted,
+                "policy_type": policy_type,
+                "allotted": round(entitlement, 2),
                 "used": round(used, 1),
                 "pending": round(pending, 1),
                 "available": round(available, 1),
-                # Backwards-compatible: remaining now reflects bookable balance.
                 "remaining": round(available, 1),
             }
         )
-    return {"employee_id": target, "balances": balances}
+    return {"employee_id": target, "start_date": start_date.isoformat() if start_date else None, "balances": balances}
 
 
 @router.put("/allowances/{employee_id}")
