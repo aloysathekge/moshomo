@@ -52,20 +52,19 @@ export function HomeHero({
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-12rem)] max-w-2xl flex-col items-center justify-center animate-rise">
+    <div className="mx-auto flex max-w-2xl flex-col items-center">
       <p className="eyebrow flex items-center gap-1.5">
         <Icon name="sparkles" className="size-3.5" /> Moshomo AI
       </p>
-      <h1 className="mt-4 text-center text-3xl font-semibold tracking-tight sm:text-4xl">
+      <h1 className="mt-3 text-center text-2xl font-semibold tracking-tight sm:text-3xl">
         {firstName ? `Hi ${firstName}, what can I do for you?` : "What can I do for you?"}
       </h1>
-      <p className="mt-3 text-center text-ink-muted">Ask about your team, leave, or shifts — grounded in your data.</p>
 
-      <div className="mt-8 w-full">
-        <div className="premium-card flex flex-col gap-3">
+      <div className="mt-5 w-full">
+        <div className="premium-card flex flex-col gap-2.5">
           <textarea
             aria-label="Ask Moshomo"
-            className="min-h-[3rem] w-full resize-none bg-transparent text-[15px] leading-6 text-ink outline-none placeholder:text-ink-faint"
+            className="min-h-[2.5rem] w-full resize-none bg-transparent text-[15px] leading-6 text-ink outline-none placeholder:text-ink-faint"
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={onKeyDown}
             placeholder="Ask about your workforce…"

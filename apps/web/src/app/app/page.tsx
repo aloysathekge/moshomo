@@ -6,7 +6,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { AssistantPanel } from "@/modules/assistant/assistant-panel";
 import { EmployeesPanel, type Account, type Employee, type Role } from "@/modules/employees/employees-panel";
-import { HomeHero } from "@/modules/home/home-hero";
+import { HomePanel } from "@/modules/home/home-panel";
 import { LeavePanel } from "@/modules/leave/leave-panel";
 import { PlanPanel } from "@/modules/plan/plan-panel";
 import { ShiftsPanel } from "@/modules/shifts/shifts-panel";
@@ -185,29 +185,20 @@ export default function WorkspacePage() {
 
   function homeFor(role: Role) {
     const firstName = employees.find((e) => e.email === session?.user.email)?.first_name;
-    const banner =
-      role === "admin" && !setupComplete ? (
-        <button
-          className="premium-card flex w-full items-center justify-between gap-3 text-left transition hover:-translate-y-0.5"
-          onClick={() => go("settings")}
-          type="button"
-        >
-          <span>
-            <span className="block text-sm font-semibold">Finish setting up your workspace</span>
-            <span className="mt-0.5 block text-xs text-ink-muted">Add a logo, a department, and your first teammate.</span>
-          </span>
-          <span aria-hidden className="text-ink-faint">→</span>
-        </button>
-      ) : undefined;
     return (
-      <HomeHero
+      <HomePanel
+        companyId={membership!.company_id}
+        enabledApps={enabledApps}
+        employees={employees}
         firstName={firstName ?? undefined}
         onAsk={(question) => {
           setAssistantSeed(question);
           go("assistant");
         }}
+        onNavigate={(s) => go(s)}
         role={role}
-        setupBanner={banner}
+        session={session!}
+        setupComplete={setupComplete}
       />
     );
   }

@@ -118,6 +118,24 @@ export function EmployeesPanel({
     }
   }
 
+  if (selected) {
+    return (
+      <EmployeeDetail
+        account={accounts[selected.id]}
+        canManage={canManage}
+        companyId={companyId}
+        departmentName={departmentName(selected.department_id)}
+        departments={departments}
+        employee={selected}
+        managers={employees.filter((item) => item.id !== selected.id)}
+        onBack={() => setSelectedId(undefined)}
+        onChanged={onChanged}
+        onNotice={onNotice}
+        session={session}
+      />
+    );
+  }
+
   return (
     <div className="mx-auto max-w-6xl animate-rise">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -210,7 +228,7 @@ export function EmployeesPanel({
                   onClick={() => setSelectedId(employee.id)}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-brand-100 text-xs font-bold text-brand-800">
+                    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-surface-sunken text-xs font-bold text-ink-soft">
                       {initials(employee)}
                     </span>
                     <div className="min-w-0">
@@ -241,26 +259,11 @@ export function EmployeesPanel({
         )}
       </section>
 
-      {selected && (
-        <EmployeeModal
-          account={accounts[selected.id]}
-          canManage={canManage}
-          companyId={companyId}
-          departmentName={departmentName(selected.department_id)}
-          departments={departments}
-          employee={selected}
-          managers={employees.filter((item) => item.id !== selected.id)}
-          onChanged={onChanged}
-          onClose={() => setSelectedId(undefined)}
-          onNotice={onNotice}
-          session={session}
-        />
-      )}
     </div>
   );
 }
 
-function EmployeeModal({
+function EmployeeDetail({
   account,
   canManage,
   companyId,
@@ -268,8 +271,8 @@ function EmployeeModal({
   departments,
   employee,
   managers,
+  onBack,
   onChanged,
-  onClose,
   onNotice,
   session,
 }: {
@@ -280,25 +283,22 @@ function EmployeeModal({
   departments: Department[];
   employee: Employee;
   managers: Employee[];
+  onBack: () => void;
   onChanged: () => void | Promise<void>;
-  onClose: () => void;
   onNotice: (text: string) => void;
   session: Session;
 }) {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+    const goBackOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onBack();
     };
-    window.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("keydown", goBackOnEscape);
     return () => {
-      document.body.style.overflow = previous;
-      window.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("keydown", goBackOnEscape);
     };
-  }, [onClose]);
+  }, [onBack]);
 
   async function saveDetails(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -323,7 +323,7 @@ function EmployeeModal({
       });
       onNotice("Employee updated.");
       await onChanged();
-      onClose();
+      onBack();
     } catch (error) {
       onNotice(error instanceof Error ? error.message : "Update failed.");
     } finally {
@@ -360,7 +360,7 @@ function EmployeeModal({
       });
       onNotice("Employee removed.");
       await onChanged();
-      onClose();
+      onBack();
     } catch (error) {
       onNotice(error instanceof Error ? error.message : "Remove failed.");
     } finally {
@@ -369,68 +369,65 @@ function EmployeeModal({
   }
 
   return (
-    <div
-      aria-labelledby="employee-dialog-title"
-      aria-modal="true"
-      className="fixed inset-0 z-50 grid place-items-end overflow-y-auto bg-black/40 p-0 backdrop-blur-sm sm:place-items-center sm:p-6"
-      onClick={onClose}
-      role="dialog"
-    >
-      <div
-        className="animate-rise max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl bg-surface p-6 shadow-2xl sm:rounded-3xl sm:p-8"
-        onClick={(event) => event.stopPropagation()}
+    <div className="mx-auto max-w-3xl animate-rise pb-12">
+      <button
+        className="mb-5 inline-flex items-center gap-1.5 text-sm font-medium text-ink-soft transition hover:text-ink"
+        onClick={onBack}
+        type="button"
       >
-        <div className="flex items-start justify-between gap-4">
+        <svg aria-hidden className="size-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+          <path d="M15 18l-6-6 6-6" />
+        </svg>
+        Back to employees
+      </button>
+
+      <div className="space-y-6">
+        <div className="premium-card">
           <div className="flex items-center gap-4">
-            <span className="grid size-14 place-items-center rounded-2xl bg-brand-100 text-lg font-black text-brand-800">
+            <span className="grid size-16 shrink-0 place-items-center rounded-2xl bg-ink text-xl font-semibold text-white">
               {initials(employee)}
             </span>
-            <div>
-              <h2 className="text-2xl font-semibold tracking-tight" id="employee-dialog-title">
+            <div className="min-w-0">
+              <h2 className="truncate text-2xl font-semibold tracking-tight" id="employee-dialog-title">
                 {employee.first_name} {employee.last_name}
               </h2>
-              <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink-muted">
-                <span className={`badge ${account ? roleStyles[account.role] : ""}`}>
-                  {account?.role ?? "—"}
-                </span>
-                <span className={`badge ${statusStyles[employee.status]}`}>{employee.status}</span>
-                <span>{account?.state ?? ""}</span>
+              <p className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <span className="badge capitalize">{account?.role ?? "—"}</span>
+                <span className={`badge capitalize ${statusStyles[employee.status]}`}>{employee.status}</span>
+                {account && account.state.toLowerCase() !== "active" && <span className="badge">{account.state}</span>}
               </p>
             </div>
           </div>
-          <button className="secondary-button px-3 py-2" onClick={onClose}>
-            Close
-          </button>
+          <dl className="mt-6 grid grid-cols-1 gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
+            <Detail label="Employee number" value={employee.employee_number} />
+            <Detail label="Email" value={employee.email ?? "—"} />
+            <Detail label="Phone" value={employee.phone_number ?? "—"} />
+            <Detail label="Department" value={departmentName} />
+            <Detail label="Job title" value={employee.job_title ?? "—"} />
+            <Detail label="Employment type" value={employee.employment_type ?? "—"} />
+            <Detail label="Start date" value={employee.start_date ?? "—"} />
+          </dl>
         </div>
 
-        <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-4 rounded-2xl bg-surface-muted p-5 text-sm">
-          <Detail label="Employee number" value={employee.employee_number} />
-          <Detail label="Email" value={employee.email ?? "—"} />
-          <Detail label="Department" value={departmentName} />
-          <Detail label="Employment type" value={employee.employment_type ?? "—"} />
-          <Detail label="Job title" value={employee.job_title ?? "—"} />
-          <Detail label="Start date" value={employee.start_date ?? "—"} />
-        </dl>
+          {canManage && (
+            <>
+              <Section title="Role & permissions">
+                <div className="flex flex-wrap items-center gap-2">
+                  {(["employee", "manager", "admin"] as Role[]).map((role) => (
+                    <button
+                      className={`chip ${account?.role === role ? "bg-ink text-white" : ""}`}
+                      disabled={busy || account?.role === role}
+                      key={role}
+                      onClick={() => changeRole(role)}
+                    >
+                      {account?.role === role ? `${role} · current` : `Make ${role}`}
+                    </button>
+                  ))}
+                </div>
+              </Section>
 
-        {canManage && (
-          <>
-            <Section title="Role & permissions">
-              <div className="flex flex-wrap items-center gap-2">
-                {(["employee", "manager", "admin"] as Role[]).map((role) => (
-                  <button
-                    className={`chip ${account?.role === role ? "ring-2 ring-brand-300" : ""}`}
-                    disabled={busy || account?.role === role}
-                    key={role}
-                    onClick={() => changeRole(role)}
-                  >
-                    {account?.role === role ? `${role} (current)` : `Make ${role}`}
-                  </button>
-                ))}
-              </div>
-            </Section>
-
-            <Section title="Edit details">
-              <form className="grid gap-4 sm:grid-cols-2" onSubmit={saveDetails}>
+              <Section title="Edit details">
+                <form className="grid gap-4 sm:grid-cols-2" onSubmit={saveDetails}>
                 <Field defaultValue={employee.first_name} label="First name" name="first_name" />
                 <Field defaultValue={employee.last_name} label="Last name" name="last_name" />
                 <Field defaultValue={employee.phone_number ?? ""} label="Phone" name="phone_number" required={false} />
@@ -710,8 +707,8 @@ function DocumentUpload({
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="mt-6 pt-6">
-      <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-ink-faint">{title}</h3>
+    <section>
+      <h3 className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-ink-faint">{title}</h3>
       {children}
     </section>
   );
