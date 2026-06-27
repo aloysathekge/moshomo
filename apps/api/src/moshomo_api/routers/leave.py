@@ -17,12 +17,31 @@ router = APIRouter(
     dependencies=[Depends(require_app_enabled("leave"))],
 )
 
-LeaveType = Literal["annual", "sick", "family_responsibility", "unpaid"]
+LeaveType = Literal[
+    "annual",
+    "sick",
+    "family_responsibility",
+    "maternity",
+    "parental",
+    "study",
+    "long_service",
+    "unpaid",
+]
 DayPart = Literal["full", "morning", "afternoon"]
 LeaveStatus = Literal["pending", "approved", "rejected", "cancelled"]
-LEAVE_TYPES: tuple[LeaveType, ...] = ("annual", "sick", "family_responsibility", "unpaid")
-# Unpaid leave has no allowance ceiling; the rest are balance-tracked.
-BALANCE_TRACKED: tuple[LeaveType, ...] = ("annual", "sick", "family_responsibility")
+LEAVE_TYPES: tuple[LeaveType, ...] = (
+    "annual",
+    "sick",
+    "family_responsibility",
+    "maternity",
+    "parental",
+    "study",
+    "long_service",
+    "unpaid",
+)
+# Unpaid leave has no allowance ceiling; the rest are balance-tracked (enforced
+# only when an allowance is configured for that type).
+BALANCE_TRACKED: tuple[LeaveType, ...] = tuple(t for t in LEAVE_TYPES if t != "unpaid")
 # Requests that still consume balance (approved is committed, pending is reserved).
 COMMITTING_STATUSES = "(approved,pending)"
 

@@ -9,6 +9,10 @@ export const leaveTypes = [
   "annual",
   "sick",
   "family_responsibility",
+  "maternity",
+  "parental",
+  "study",
+  "long_service",
   "unpaid",
 ] as const;
 

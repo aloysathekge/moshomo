@@ -6,7 +6,15 @@ import type { Department, Employee } from "@/modules/employees/employees-panel";
 import type { Role } from "@/lib/apps";
 import { moshomoApi } from "@/lib/api";
 
-type LeaveTypeValue = "annual" | "sick" | "family_responsibility" | "unpaid";
+type LeaveTypeValue =
+  | "annual"
+  | "sick"
+  | "family_responsibility"
+  | "maternity"
+  | "parental"
+  | "study"
+  | "long_service"
+  | "unpaid";
 type LeaveStatus = "pending" | "approved" | "rejected" | "cancelled";
 type DayPart = "full" | "morning" | "afternoon";
 
@@ -37,8 +45,14 @@ const LEAVE_TYPES: { value: LeaveTypeValue; label: string }[] = [
   { value: "annual", label: "Annual" },
   { value: "sick", label: "Sick" },
   { value: "family_responsibility", label: "Family responsibility" },
+  { value: "maternity", label: "Maternity" },
+  { value: "parental", label: "Parental" },
+  { value: "study", label: "Study" },
+  { value: "long_service", label: "Long service" },
   { value: "unpaid", label: "Unpaid" },
 ];
+const EMPTY_ALLOWANCES = () =>
+  Object.fromEntries(LEAVE_TYPES.map((t) => [t.value, ""])) as Record<LeaveTypeValue, string>;
 const typeLabel = (value: LeaveTypeValue) => LEAVE_TYPES.find((t) => t.value === value)?.label ?? value;
 
 const statusStyles: Record<LeaveStatus, string> = {
@@ -964,7 +978,7 @@ function AllowancesEditor({
   session: Session;
 }) {
   const [employeeId, setEmployeeId] = useState("");
-  const [values, setValues] = useState<Record<LeaveTypeValue, string>>({ annual: "", sick: "", family_responsibility: "", unpaid: "" });
+  const [values, setValues] = useState<Record<LeaveTypeValue, string>>(EMPTY_ALLOWANCES);
   const [saving, setSaving] = useState(false);
 
   async function pick(id: string) {
@@ -972,7 +986,7 @@ function AllowancesEditor({
     if (!id) return;
     try {
       const bal = await moshomoApi<{ balances: Balance[] }>(`/workforce/leave/balances?employee_id=${id}`, { session, companyId });
-      const next: Record<LeaveTypeValue, string> = { annual: "", sick: "", family_responsibility: "", unpaid: "" };
+      const next: Record<LeaveTypeValue, string> = EMPTY_ALLOWANCES();
       for (const b of bal.balances) next[b.leave_type] = String(b.allotted);
       setValues(next);
     } catch {
